@@ -1,8 +1,16 @@
-# Agent Project Template
+# AI Agents
 
 A powerful AI agent system built with pydantic-ai and FastAPI, providing intelligent agents for resume parsing, career coaching, and interview preparation.
 
 ## Features
+
+- **Resume Parser Agent**: Extract structured data from PDF resumes with high accuracy
+- **Resume Tutor Agent**: Interactive conversational agent to help users build and improve their resumes
+- **Interview Coach Agent**: AI-powered mock interviews with personalized feedback and scoring
+- **RESTful API**: Clean API endpoints for easy integration with frontend applications
+- **Multiple LLM Support**: OpenAI GPT-4, Google Gemini, and other providers
+- **Type Safety**: Full type safety with Pydantic models and structured outputs
+- **Auto Database Setup**: Automatic database initialization on container startup
 
 ## Technology Stack
 
