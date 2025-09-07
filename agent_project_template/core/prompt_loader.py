@@ -3,15 +3,19 @@ Prompt Loader Utility
 
 This module provides a utility for loading prompt text from files
 in the `prompts` directory.
+
+The loader uses LRU caching (maxsize=128) to improve performance by avoiding
+repeated file I/O operations. Use clear_prompt_cache() to manually clear the
+cache when prompt files are updated during runtime.
 """
-import os
+from pathlib import Path
 from functools import lru_cache
-from ai_agents.core.exceptions import InternalServiceException
-from ai_agents.core.error_codes import InternalServiceErrorCode
+from agent_project_template.core.exceptions import InternalServiceException
+from agent_project_template.core.error_codes import InternalServiceErrorCode
 
 # Get the absolute path to the 'prompts' directory
 # This makes the loader independent of where the script is run
-PROMPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'prompts')
+PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 @lru_cache(maxsize=128)
 def load_prompt(prompt_name: str) -> str:
@@ -25,20 +29,43 @@ def load_prompt(prompt_name: str) -> str:
         str: The content of the prompt file.
 
     Raises:
-        InternalServiceException: If the prompt file is not found.
+        InternalServiceException: If the prompt file is not found or cannot be read.
     """
-    file_path = os.path.join(PROMPT_DIR, prompt_name)
-    
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
+    # Resolve paths and validate against directory traversal
+    base_dir = PROMPT_DIR.resolve()
+    target_path = (base_dir / prompt_name).resolve()
+
+    # Security check: ensure target path is within the prompts directory
+    if not str(target_path).startswith(str(base_dir)):
         raise InternalServiceException(
-            InternalServiceErrorCode.SERVICE_INIT_FAILED,
-            detail=f"Prompt file not found at: {file_path}"
+            "Invalid prompt path outside prompts directory",
+            InternalServiceErrorCode.OPERATION_FAILED,
+            {"prompt_name": prompt_name}
         )
-    except Exception as e:
+
+    try:
+        return target_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
         raise InternalServiceException(
-            InternalServiceErrorCode.SERVICE_INIT_FAILED,
-            detail=f"Failed to load prompt file {prompt_name}: {str(e)}"
-        ) 
+            f"Prompt file not found at: {target_path}",
+            InternalServiceErrorCode.OPERATION_FAILED,
+            {"prompt_name": prompt_name, "file_path": str(target_path)}
+        ) from exc
+    except Exception as e:
+        raise InternalServiceException.wrap(
+            e,
+            f"Failed to load prompt file {prompt_name}",
+            InternalServiceErrorCode.OPERATION_FAILED,
+            prompt_name=prompt_name,
+            file_path=str(target_path)
+        )
+
+
+def clear_prompt_cache() -> None:
+    """
+    Clear the prompt loading cache.
+
+    This function should be called when prompt files are updated during runtime
+    to ensure the latest content is loaded on subsequent calls to load_prompt().
+    """
+    load_prompt.cache_clear()
