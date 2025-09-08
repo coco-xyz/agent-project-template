@@ -1,192 +1,184 @@
 """
 Database Core
 
-Global SQLAlchemy engine, session, and base for PostgreSQL access.
+SQLAlchemy engine, session management, and database utilities for Agent Project Template.
+Provides connection pooling, transaction management, and health monitoring.
+
+Features:
+- Connection pool with monitoring and health checks
+- Transaction context managers with automatic rollback
+- FastAPI-compatible dependency injection
+- Comprehensive error handling with core error codes
+- Connection lifecycle management
 """
-from sqlalchemy import create_engine, text, event
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.pool import QueuePool
-from ai_agents.core.config import settings
-from ai_agents.core.exceptions import DatabaseException
-from ai_agents.core.error_codes import DatabaseErrorCode
+
 from contextlib import contextmanager
-from typing import Generator
-from ai_agents.utils.logger import get_logger
-import time
-import threading
+from typing import Generator, Dict, Any
+from dataclasses import dataclass
+
+from sqlalchemy import create_engine, text, Engine
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.exc import OperationalError, SQLAlchemyError, DatabaseError, InterfaceError
+from sqlalchemy.pool import QueuePool
+
+# Fast-failing imports from core
+from agent_project_template.core.config import settings
+from agent_project_template.core.exceptions import DatabaseException
+from agent_project_template.core.error_codes import DatabaseErrorCode
+from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class PoolStatus:
+    """Immutable connection pool status information."""
+    size: int
+    checked_out: int
+    overflow: int
+    invalid: int
+
 
 # Global SQLAlchemy base
 Base = declarative_base()
 
-# Enhanced engine configuration with core connection pool settings
-engine = create_engine(
-    settings.database__url,
-    echo=settings.database__echo,
+
+
+
+def _create_database_engine() -> Engine:
+    """Create and configure the database engine with optimized settings."""
+    try:
+        db_engine = create_engine(
+            settings.database__url,
+            echo=settings.database__echo,
+            # Use all configurable database settings
+            pool_pre_ping=settings.database__pool_pre_ping,
+            pool_size=settings.database__pool_size,
+            max_overflow=settings.database__max_overflow,
+            pool_timeout=settings.database__pool_timeout,
+            pool_recycle=settings.database__pool_recycle,
+            poolclass=QueuePool,
+        )
+
+        return db_engine
+
+    except Exception as e:
+        logger.error("Failed to create database engine: %s", str(e))
+
+        # Extract host from database URL for error details
+        database_url = str(settings.database__url)
+        if '@' in database_url:
+            host = database_url.rsplit('@', maxsplit=1)[-1].split('/')[0]
+        else:
+            host = "unknown"
+
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            f"Database engine creation failed: {str(e)}",
+            details={"database_url_host": host}
+        ) from e
+
+
+# Global engine and session factory
+engine = _create_database_engine()
+
+# Use safe defaults for session configuration
+# expire_on_commit=True: Objects expire after commit, safer but requires refresh for access
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
     future=True,
-    pool_pre_ping=settings.database__pool_pre_ping,
-    pool_size=settings.database__pool_size,
-    max_overflow=settings.database__max_overflow,
-    pool_timeout=settings.database__pool_timeout,
-    pool_recycle=settings.database__pool_recycle,
-    pool_reset_on_return=settings.database__pool_reset_on_return,
-    poolclass=QueuePool,
-    connect_args={
-        "connect_timeout": settings.database__connect_timeout,
-        "application_name": "ai_agents_app"
-    }
+    expire_on_commit=True  # Safe default, prevents stale data issues
 )
 
-SessionLocal = sessionmaker(
-    bind=engine, autocommit=False, autoflush=False, future=True)
 
-# Connection pool monitoring
-_pool_stats_lock = threading.Lock()
-_last_pool_log_time = 0
-
-
-def log_pool_status():
-    """Log connection pool status for monitoring"""
-    global _last_pool_log_time
-    current_time = time.time()
-
-    # Log pool status every 30 seconds at most
-    with _pool_stats_lock:
-        if current_time - _last_pool_log_time < 30:
-            return
-        _last_pool_log_time = current_time
-
-    pool = engine.pool
-    logger.info(
-        "Connection Pool Status - Size: %d, Checked out: %d, Overflow: %d",
-        pool.size(),
-        pool.checkedout(),
-        pool.overflow()
-    )
-
-# Add pool event listeners for monitoring
-
-
-@event.listens_for(engine, "connect")
-def receive_connect(dbapi_connection, connection_record):
-    """Log new connections"""
-    logger.debug("New database connection established")
-
-
-@event.listens_for(engine, "checkout")
-def receive_checkout(dbapi_connection, connection_record, connection_proxy):
-    """Log connection checkout and monitor pool status"""
-    log_pool_status()
-
-
-@event.listens_for(engine, "checkin")
-def receive_checkin(dbapi_connection, connection_record):
-    """Log connection checkin"""
-    logger.debug("Database connection returned to pool")
-
-
-def get_db() -> Generator:
+def get_pool_status() -> PoolStatus:
     """
-    FastAPI dependency for database session.
-    Yields a SQLAlchemy session and ensures proper close.
-    Enhanced with better error handling and connection management.
-    """
-    db = SessionLocal()
-    try:
-        logger.debug("Database session created")
-        yield db
-    except Exception as e:
-        logger.error("Database session error: %s", str(e))
-        # Ensure rollback on any exception
-        try:
-            db.rollback()
-        except Exception as rollback_error:
-            logger.error("Failed to rollback session: %s", str(rollback_error))
-        raise
-    finally:
-        try:
-            db.close()
-            logger.debug("Database session closed")
-        except Exception as close_error:
-            logger.error("Failed to close database session: %s",
-                         str(close_error))
+    Get current connection pool status.
 
-
-@contextmanager
-def transaction_manager(db_session):
-    """
-    Enhanced transaction context manager for database operations.
-
-    Provides atomic transaction support with automatic rollback on exceptions.
-    Enhanced with better error handling and session state management.
-
-    Args:
-        db_session: SQLAlchemy database session
-
-    Yields:
-        Session: The database session within transaction context
+    Returns:
+        PoolStatus: Immutable pool status information
 
     Raises:
-        DatabaseException: If transaction operations fail
-        DatabaseException: If session management fails
-
-    Example:
-        with transaction_manager(db) as tx:
-            # Perform multiple database operations
-            crud.create_without_commit(data1)
-            crud.update_without_commit(data2)
-            # Transaction commits automatically on successful exit
+        DatabaseException: If pool status cannot be retrieved
     """
-    if db_session is None:
-        raise DatabaseException(DatabaseErrorCode.DATABASE_SESSION_ERROR, "Database session is None")
-
-    logger.debug("Starting database transaction")
-
-    # Check if session is still valid
     try:
-        db_session.execute(text("SELECT 1"))
+        pool = engine.pool
+        return PoolStatus(
+            size=pool.size(),
+            checked_out=pool.checkedout(),
+            overflow=pool.overflow(),
+            invalid=pool.invalid()
+        )
     except Exception as e:
-        logger.error("Session validation failed: %s", str(e))
-        raise DatabaseException(DatabaseErrorCode.DATABASE_SESSION_ERROR, f"Invalid database session: {e}") from e
+        logger.error("Failed to get pool status: %s", str(e))
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            f"Pool status retrieval failed: {str(e)}"
+        ) from e
 
+
+
+def _create_db_session() -> Generator[Session, None, None]:
+    """
+    Internal session creation logic with unified error handling.
+
+    This function contains the core database session management logic
+    that is shared between FastAPI dependency injection and context manager usage.
+
+    Yields:
+        Session: SQLAlchemy database session
+
+    Raises:
+        DatabaseException: If session creation or management fails
+    """
+    db_session = None
     try:
-        # Begin transaction (SQLAlchemy session is already in transaction mode by default)
+        db_session = SessionLocal()
+        logger.debug("Database session created")
         yield db_session
 
-        # Commit transaction if no exceptions occurred
-        db_session.commit()
-        logger.debug("Transaction committed successfully")
+    except SQLAlchemyError as e:
+        logger.error("Database session error: %s", str(e))
+        if db_session:
+            try:
+                db_session.rollback()
+                logger.debug("Database session rolled back due to error")
+            except Exception as rollback_error:
+                logger.error("Failed to rollback session: %s", str(rollback_error))
+        raise DatabaseException(
+            DatabaseErrorCode.QUERY_FAILED,
+            f"Database session error: {str(e)}"
+        ) from e
 
     except Exception as e:
-        logger.error("Transaction failed, rolling back: %s", str(e))
-        try:
-            db_session.rollback()
-            logger.debug("Transaction rolled back successfully")
-        except Exception as rollback_error:
-            logger.error("Transaction rollback failed: %s",
-                         str(rollback_error))
-            # Mark session as invalid to prevent further use
+        logger.error("Unexpected session error: %s", str(e))
+        if db_session:
+            try:
+                db_session.rollback()
+            except Exception:
+                pass
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            f"Unexpected database error: {str(e)}"
+        ) from e
+
+    finally:
+        if db_session:
             try:
                 db_session.close()
-            except:
-                pass
-            raise DatabaseException(
-                DatabaseErrorCode.DATABASE_TRANSACTION_ROLLBACK_ERROR,
-                f"Failed to rollback transaction: {rollback_error}") from rollback_error
-
-        # Re-raise the original exception
-        raise DatabaseException(DatabaseErrorCode.DATABASE_TRANSACTION_ERROR, f"Transaction failed: {e}") from e
+                logger.debug("Database session closed")
+            except Exception as close_error:
+                logger.error("Failed to close database session: %s", str(close_error))
 
 
-@contextmanager
-def get_db_session():
+def get_db_dependency() -> Generator[Session, None, None]:
     """
-    Context manager for creating and managing database sessions.
+    FastAPI dependency for database session.
 
-    Provides automatic session creation, error handling, and cleanup.
-    Use this for operations that need their own session lifecycle.
+    This function is specifically designed for FastAPI dependency injection.
+    FastAPI will automatically manage the session lifecycle for each request.
 
     Yields:
         Session: SQLAlchemy database session
@@ -195,59 +187,214 @@ def get_db_session():
         DatabaseException: If session creation or management fails
 
     Example:
-        with get_db_session() as db:
-            # Use db session for operations
-            result = db.query(Model).all()
+        @app.get("/users")
+        async def get_users(db: Session = Depends(get_db_dependency)):
+            return db.query(User).all()
+
+        @app.post("/users")
+        async def create_user(user_data: UserCreate, db: Session = Depends(get_db_dependency)):
+            user = User(**user_data.dict())
+            db.add(user)
+            db.commit()
+            return user
     """
-    db_session = None
+    yield from _create_db_session()
+
+
+@contextmanager
+def database_session() -> Generator[Session, None, None]:
+    """
+    Context manager for database session.
+
+    Use this for non-FastAPI contexts such as CLI scripts, background tasks,
+    service layer operations, or any standalone database operations.
+
+    Yields:
+        Session: SQLAlchemy database session
+
+    Raises:
+        DatabaseException: If session creation or management fails
+
+    Example:
+        # In background tasks
+        with database_session() as db:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                user.last_login = datetime.utcnow()
+                db.commit()
+
+        # In service layer
+        def process_user_data(user_id: int):
+            with database_session() as db:
+                user = db.query(User).filter(User.id == user_id).first()
+                # Complex business logic
+                user.status = "processed"
+                db.commit()
+    """
+    yield from _create_db_session()
+
+
+
+
+
+@contextmanager
+def transaction_manager(db_session: Session) -> Generator[Session, None, None]:
+    """
+    Transaction context manager with automatic commit/rollback.
+
+    Designed for Service layer to manage business transactions.
+    Currently does not support nested transactions - use simple patterns to avoid nesting.
+
+    Args:
+        db_session: Existing database session
+
+    Yields:
+        Session: The same database session within transaction context
+
+    Raises:
+        DatabaseException: If transaction fails
+
+    Usage:
+        # Recommended pattern
+        with database_session() as db:
+            with transaction_manager(db) as tx:
+                # Multiple operations in single transaction
+                user = User(name="John")
+                tx.add(user)
+                tx.flush()  # Get ID without committing
+
+                profile = Profile(user_id=user.id, bio="Developer")
+                tx.add(profile)
+
+                # Transaction commits automatically on successful exit
+                # Transaction rolls back automatically on any exception
+
+    Note:
+        - Use this for complex business logic that spans multiple database operations
+        - For simple operations in FastAPI routes, just use db.commit() directly
+        - Nested transactions are not currently supported
+    """
+    if db_session is None:
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            "Database session is None"
+        )
+
+    logger.debug("Starting database transaction")
+
     try:
-        db_session = SessionLocal()
-        logger.debug("New database session created")
         yield db_session
+        db_session.commit()
+        logger.debug("Database transaction committed successfully")
+
     except Exception as e:
-        logger.error("Database session error: %s", str(e))
-        if db_session:
-            try:
-                db_session.rollback()
-            except Exception as rollback_error:
-                logger.error("Failed to rollback session: %s",
-                             str(rollback_error))
-        raise DatabaseException(DatabaseErrorCode.DATABASE_SESSION_ERROR, f"Database session failed: {e}") from e
-    finally:
-        if db_session:
-            try:
-                db_session.close()
-                logger.debug("Database session closed")
-            except Exception as close_error:
-                logger.error(
-                    "Failed to close database session: %s", str(close_error))
+        logger.error("Database transaction failed: %s", str(e))
+        try:
+            db_session.rollback()
+            logger.debug("Database transaction rolled back")
+        except Exception as rollback_error:
+            logger.error("Failed to rollback transaction: %s", str(rollback_error))
+
+        # 根据异常类型选择错误码
+        error_code = (DatabaseErrorCode.QUERY_FAILED
+                     if isinstance(e, SQLAlchemyError)
+                     else DatabaseErrorCode.TRANSACTION_FAILED)
+
+        raise DatabaseException(
+            error_code,
+            f"Database transaction failed: {str(e)}"
+        ) from e
 
 
-# Optional: test connection utility for startup
-def test_connection():
-    """Test database connection and log pool status"""
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        log_pool_status()
-        logger.info("Database connection test successful")
-    except OperationalError as e:
-        logger.error("Database connection test failed: %s", str(e))
-        raise DatabaseException(DatabaseErrorCode.DATABASE_CONNECTION_FAILED, f"Database connection failed: {e}")
-
-
-def get_pool_status() -> dict:
+def dispose_engine() -> None:
     """
-    Get current connection pool status for monitoring.
+    Dispose database engine and close all connections.
+
+    Should be called during application shutdown for graceful cleanup.
+    Useful for FastAPI shutdown events or application lifecycle management.
+
+    Example:
+        @app.on_event("shutdown")
+        async def shutdown_event():
+            dispose_engine()
+    """
+    try:
+        engine.dispose()
+        logger.info("Database engine disposed successfully")
+    except Exception as e:
+        logger.error("Failed to dispose database engine: %s", str(e))
+
+
+def test_connection() -> Dict[str, Any]:
+    """
+    Test database connection and return status information.
 
     Returns:
-        dict: Pool status information
+        Dict[str, Any]: Connection test results and pool status
+
+    Raises:
+        DatabaseException: If connection test fails
+
+    Example:
+        try:
+            status = test_connection()
+            logger.info("Database ready: %s", status)
+        except DatabaseException as e:
+            logger.error("Database not ready: %s", e.message)
     """
-    pool = engine.pool
-    return {
-        "size": pool.size(),
-        "checked_out": pool.checkedout(),
-        "overflow": pool.overflow(),
-        "pool_size_limit": engine.pool._pool.maxsize if hasattr(engine.pool, '_pool') else 'unknown',
-        "max_overflow": engine.pool._max_overflow if hasattr(engine.pool, '_max_overflow') else 'unknown'
-    }
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1 as test_value"))
+            test_value = result.scalar()
+
+        pool_status = get_pool_status()
+
+        # Log pool status for monitoring
+        logger.info(
+            "Database connection test - Pool status: Size=%d, Checked out=%d, "
+            "Overflow=%d, Invalid=%d",
+            pool_status.size, pool_status.checked_out,
+            pool_status.overflow, pool_status.invalid
+        )
+
+        # 安全地渲染 URL
+        try:
+            safe_url = engine.url.set(password="***").render_as_string(hide_password=False)
+        except Exception:
+            # 如果 URL 渲染失败，使用简化版本
+            safe_url = (
+                f"{engine.url.drivername}://***@{engine.url.host}:"
+                f"{engine.url.port}/{engine.url.database}"
+            )
+
+        status = {
+            "connection_test": "passed",
+            "test_query_result": test_value,
+            "pool_status": {
+                "size": pool_status.size,
+                "checked_out": pool_status.checked_out,
+                "overflow": pool_status.overflow,
+                "invalid": pool_status.invalid  # 添加缺失的字段
+            },
+            "engine_url": safe_url
+        }
+
+        logger.info("Database connection test successful")
+        return status
+
+    except (OperationalError, DatabaseError, InterfaceError) as e:
+        # 捕获更多的 SQLAlchemy 数据库相关异常
+        logger.error("Database connection test failed: %s", str(e))
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            f"Database connection test failed: {str(e)}",
+            details={"error_type": type(e).__name__}
+        ) from e
+
+    except Exception as e:
+        logger.error("Unexpected error during connection test: %s", str(e))
+        raise DatabaseException(
+            DatabaseErrorCode.CONNECTION_FAILED,
+            f"Database connection test failed: {str(e)}",
+            details={"error_type": type(e).__name__}
+        ) from e

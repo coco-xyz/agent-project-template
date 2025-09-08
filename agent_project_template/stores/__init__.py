@@ -1,27 +1,59 @@
 """
 Stores Package
 
-Supporting Components - Data persistence and state management.
+Data persistence and state management for Agent Project Template.
+Provides clean interfaces for database and cache operations.
+
+This package follows fast-failing import strategy - missing dependencies will
+cause immediate import errors rather than graceful degradation.
 """
 
-# Main store interface (backward compatibility)
-from .resume_store import ResumeStore
+# Database components - always available
+from .database import (
+    Base,
+    engine,
+    SessionLocal,
+    get_db_dependency,
+    database_session,
+    transaction_manager,
+    test_connection,
+    get_pool_status,
+    dispose_engine
+)
 
-# Models
-from .models.resume_dialogue import ResumeDialogues
-from .models.resume import Resume
+# Redis components - fast-failing imports
+from .redis_client import (
+    RedisClient,
+    get_redis_client,
+    close_redis_client,
+    test_redis_connection
+)
 
-# CRUD operations
-from .crud.resume_dialogue_crud import ResumeDialogueCrud
-from .crud.resume_crud import ResumeCrud
+from .redis_lock import (
+    SessionLock,
+    session_lock_context
+)
 
+# Stores package exports - only components from this package
 __all__ = [
-    # Main store interface
-    "ResumeStore",
-    # Models
-    "ResumeDialogues",
-    "Resume", 
-    # CRUD operations
-    "ResumeDialogueCrud",
-    "ResumeCrud"
+    # Database
+    "Base",
+    "engine",
+    "SessionLocal",
+    "get_db_dependency",
+    "database_session",
+    "transaction_manager",
+    "test_connection",
+    "get_pool_status",
+    "dispose_engine",
+
+    # Redis
+    "RedisClient",
+    "get_redis_client",
+    "close_redis_client",
+    "test_redis_connection",
+
+    # Redis Lock
+    "SessionLock",
+    "session_lock_context",
 ]
