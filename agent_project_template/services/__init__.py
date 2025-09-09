@@ -1,9 +1,9 @@
 """
 Services Package
 
-Business logic and orchestration layer.
+Business logic and orchestration layer for Agent Project Template.
 """
 
-from .resume_service import ResumeService
+from .demo_service import DemoService
 
-__all__ = ["ResumeService"]
+__all__ = ["DemoService"]
