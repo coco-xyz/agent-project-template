@@ -1,34 +1,20 @@
 """
 Agents Package
 
-This package contains the reusable, pre-configured AI agent instances.
-Each agent is defined in its own file using pydantic-ai's native Agent syntax.
+This package contains AI agent instances for the Agent Project Template.
+Each agent is defined using pydantic-ai's native Agent syntax.
+
+The demo_agent serves as an example and starting point for building your own agents.
 """
 
-from .resume_parser import (
-    resume_parser_agent,
-    professional_parser_agent,
-    project_parser_agent,
-    basic_parser_agent,
-    handle_resume_parser,
-    handle_professional_parser,
-    handle_project_parser,
-    handle_basic_parser
+from .demo_agent import (
+    demo_agent,
+    DemoDeps,
+    handle_demo_agent
 )
-from .jd_parser import jd_parser_agent
-from .resume_chat import resume_chat_agent, handle_resume_chat, ChatChunk
 
 __all__ = [
-    "resume_parser_agent",
-    "professional_parser_agent",
-    "project_parser_agent",
-    "basic_parser_agent",
-    "handle_resume_parser",
-    "handle_professional_parser",
-    "handle_project_parser",
-    "handle_basic_parser",
-    "jd_parser_agent",
-    "resume_chat_agent",
-    "handle_resume_chat",
-    "ChatChunk"
+    "demo_agent",
+    "DemoDeps",
+    "handle_demo_agent"
 ]
