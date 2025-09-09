@@ -1,14 +1,10 @@
 """
-API Schemas Package
+V1 API Schemas Package
 
-Pydantic models for API request and response data.
+Pydantic models for demo API request and response data.
 """
 
-from .requests import ResumeParseRequest, RawMarkdownRequest, SubmitRequest, InitRequest, GenerateRequest, ChatRequest
-from .responses import ResumeParseResponse, JDResponse, ResumeResponse, InitResponse, GenerateResponse, ChatResponse
+from .requests import DemoChatRequest
+from .responses import DemoChatResponse, DemoHealthResponse
 
-__all__ = [
-    "ResumeParseRequest", "ResumeParseResponse", "JDResponse", "ResumeResponse", 
-    "RawMarkdownRequest", "SubmitRequest", "InitRequest", "GenerateRequest", 
-    "ChatRequest", "InitResponse", "GenerateResponse", "ChatResponse"
-]
+__all__ = ["DemoChatRequest", "DemoChatResponse", "DemoHealthResponse"]

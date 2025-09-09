@@ -1,17 +1,8 @@
-from .base_request import BaseRequest
-from .parse_resume_request import ResumeParseRequest
-from .raw_markdown_request import RawMarkdownRequest
-from .submit_request import SubmitRequest
-from .chat_request import ChatRequest
-from .init_request import InitRequest
-from .generate_request import GenerateRequest
+"""
+V1 API Request Schemas
 
-__all__ = [
-    "BaseRequest", 
-    "ResumeParseRequest", 
-    "RawMarkdownRequest", 
-    "SubmitRequest",
-    "ChatRequest",
-    "InitRequest",
-    "GenerateRequest"
-] 
+Only demo-related request schemas for the template.
+"""
+from .demo_request import DemoChatRequest
+
+__all__ = ["DemoChatRequest"]

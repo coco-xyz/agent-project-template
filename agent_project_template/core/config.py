@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     redis__db: int = Field(default=0, ge=0, le=15, description="Redis database number")
     redis__password: Optional[str] = Field(default=None, description="Redis password")
     redis__ssl: bool = Field(default=False, description="Enable SSL/TLS for Redis connection")
-    redis__connect_timeout: int = Field(default=3000, gt=0, description="Redis connection timeout in milliseconds")
-    redis__socket_timeout: int = Field(default=3000, gt=0, description="Redis socket timeout in milliseconds")
+    redis__connect_timeout: float = Field(default=3.0, gt=0, description="Redis connection timeout in seconds")
+    redis__socket_timeout: float = Field(default=3.0, gt=0, description="Redis socket timeout in seconds")
 
     # Lock configuration
     redis_lock__retry_sleep_interval: float = Field(default=0.1, description="Lock retry sleep interval in seconds")

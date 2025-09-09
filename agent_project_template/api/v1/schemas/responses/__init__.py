@@ -1,17 +1,8 @@
-from .parse_resume_response import ResumeParseResponse
-from .base_response import BaseResponse
-from .jd_response import JDResponse
-from .resume_response import ResumeResponse
-from .chat_response import ChatResponse
-from .init_response import InitResponse
-from .generate_response import GenerateResponse
+"""
+V1 API Response Schemas
 
-__all__ = [
-    "BaseResponse", 
-    "ResumeParseResponse", 
-    "JDResponse", 
-    "ResumeResponse",
-    "ChatResponse",
-    "InitResponse",
-    "GenerateResponse"
-] 
+Only demo-related response schemas for the template.
+"""
+from .demo_response import DemoChatResponse, DemoHealthResponse
+
+__all__ = ["DemoChatResponse", "DemoHealthResponse"]

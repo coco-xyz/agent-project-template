@@ -1,59 +1,84 @@
 """
-Resume API Endpoints
+Demo API Endpoints
 
-FastAPI endpoints for resume-related operations.
+Simple demonstration endpoints for the Agent Project Template.
 """
 
-import json
-from typing import Optional, Union
+from fastapi import APIRouter
 
-from fastapi import APIRouter, UploadFile, File, Form
+from agent_project_template.core.exceptions import AgentException
+from agent_project_template.core.error_codes import AgentErrorCode
+from agent_project_template.api.v1.schemas.requests import DemoChatRequest
+from agent_project_template.api.v1.schemas.responses import DemoChatResponse, DemoHealthResponse
+from agent_project_template.api.schemas.error import ErrorResponse
+from agent_project_template.agents import handle_demo_agent
 
-# Request/Response schemas
-from ai_agents.api.v1.schemas.requests import (
-    InitRequest, ChatRequest, GenerateRequest,
-    ResumeParseRequest, RawMarkdownRequest
-)
-from ai_agents.api.v1.schemas.responses import (
-    InitResponse, GenerateResponse, ResumeParseResponse,
-    JDResponse, ResumeResponse
-)
-from .dependencies import ResumeServiceDep
-from sse_starlette import EventSourceResponse
 
 router = APIRouter()
 
 
-@router.post(
-    "/init",
-    response_model=InitResponse,
-    summary="初始化AI导师简历构建会话",
-    description="创建会话状态并建立初始话题队列，用于AI导师引导式简历构建",
-    tags=["resume"]
+@router.get(
+    "/health",
+    response_model=DemoHealthResponse,
+    summary="Demo API Health Check",
+    description="Check if the demo API and agent are working properly",
+    tags=["demo"],
+    responses={
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    }
 )
-async def init_session(
-    request: InitRequest,
-    service: ResumeServiceDep
-):
+async def health_check():
     """
-    Initialize AI Agent session for resume building.
-
-    Args:
-        request: InitRequest containing resume initial data and optional jd_content
-        service: Resume service instance (injected)
-
+    Health check endpoint for the demo API.
+    
     Returns:
-        InitResponse: Session initialization result with session_id
+        HealthResponse: Current health status
     """
-    session_result = await service.init_session(
-        resume_data=request.resume_data,
-        request_id=request.request_id,
-        jd_content=request.jd_content
+    return DemoHealthResponse(
+        status="healthy",
+        message="Demo API is running",
     )
 
-    return InitResponse(
-        session_id=session_result["session_id"],
-        opaque=request.opaque,
-        jd_position=session_result.get("jd_position"),
-        jd_company=session_result.get("jd_company")
-    )
+
+@router.post(
+    "/chat",
+    response_model=DemoChatResponse,
+    summary="Chat with Demo Agent",
+    description="Send a message to the demo agent and get a response",
+    tags=["demo"],
+    responses={
+        400: {"model": ErrorResponse, "description": "Bad request"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+        503: {"model": ErrorResponse, "description": "Agent unavailable"},
+    }
+)
+async def chat_with_agent(request: DemoChatRequest):
+    """
+    Chat with the demo agent.
+    
+    Args:
+        request: ChatRequest containing the message and optional context
+        
+    Returns:
+        ChatResponse: Agent's response
+        
+    Raises:
+        HTTPException: If agent is not available or processing fails
+    """
+    try:
+        # Handle the chat request
+        response = await handle_demo_agent(request.message)
+
+        return DemoChatResponse(
+            response=response,
+            session_id=request.session_id,
+            status="success"
+        )
+        
+    except Exception as e:
+        raise AgentException.wrap(
+            e,
+            message="Error processing chat request",
+            error_code=AgentErrorCode.RUN_FAILED
+        )

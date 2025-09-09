@@ -1,10 +1,9 @@
 """
 API Endpoints Package
 
-FastAPI endpoint definitions.
+FastAPI endpoint definitions for Agent Project Template.
 """
 
-from .demo import router as resume_router
-from . import dependencies
+from .demo import router as demo_router
 
-__all__ = ["resume_router", "dependencies"] 
+__all__ = ["demo_router"]

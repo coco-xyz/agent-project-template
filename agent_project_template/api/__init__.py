@@ -1,12 +1,10 @@
 """
-API Version 1 Package
+API Package
 
-Version 1 of the API endpoints and schemas.
+Main API package for Agent Project Template.
 """
 
-from fastapi import APIRouter
-from .endpoints import resume_router
+from .router import router
+from .factory import create_api, mount_api
 
-router = APIRouter()
-router.include_router(resume_router, prefix="/resume", tags=["resume"])
-__all__ = ["router"]
+__all__ = ["router", "create_api", "mount_api"]
