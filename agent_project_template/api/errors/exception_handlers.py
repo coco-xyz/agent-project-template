@@ -79,6 +79,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
             message=exc_dict["message"],
             code=exc_dict["code"],
             details=exc_dict["details"],
+            debug=None,
         )
         return _build_response(error, request, status_code)
 
@@ -89,6 +90,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
             type="HTTPException",
             message=str(exc.detail),
             code=f"HTTP_{exc.status_code}",
+            details=None,
+            debug=None,
         )
         return _build_response(error, request, exc.status_code)
 
@@ -100,6 +103,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
             message="Request validation failed",
             code=ValidationErrorCode.INVALID_INPUT.value,
             details={"validation_errors": exc.errors()},
+            debug=None,
         )
         return _build_response(error, request, 422)
 
@@ -109,6 +113,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         type="InternalServerError",
         message="An unexpected error occurred",
         code=APIErrorCode.INTERNAL_ERROR.value,
+        details=None,
+        debug=None,
     )
 
     # In debug mode, include more details

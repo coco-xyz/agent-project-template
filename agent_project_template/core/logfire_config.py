@@ -14,9 +14,10 @@ Usage:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
-from fastapi import FastAPI, Request
+import logfire
+from fastapi import FastAPI, Request, WebSocket
 
 from agent_project_template.core.config import settings
 from agent_project_template.core.logger import setup_logfire_handler
@@ -25,7 +26,7 @@ from agent_project_template.core.logger import setup_logfire_handler
 class _LogfireState:
     """Internal state management for logfire configuration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.configured = False
         self.instrumented = False
         self.instrument_results: Dict[str, bool] = {
@@ -86,7 +87,7 @@ def _custom_scrub_callback(match: Any) -> Any:
 
 
 def custom_request_attributes_mapper(
-    request: Request, attributes: Dict[str, Any]
+    request: Union[Request, WebSocket], attributes: Dict[str, Any]
 ) -> Optional[Dict[str, Any]]:
     """
     Custom request attributes mapper for logfire.
@@ -95,7 +96,7 @@ def custom_request_attributes_mapper(
     It filters sensitive information and focuses on useful debugging data.
 
     Args:
-        request: The FastAPI request object
+        request: The FastAPI request or WebSocket object
         attributes: Default attributes dictionary from logfire
 
     Returns:
@@ -103,12 +104,28 @@ def custom_request_attributes_mapper(
     """
     # Always log validation errors as they're important for debugging
     if attributes.get("errors"):
+        # Handle both Request and WebSocket objects
+        endpoint = (
+            str(request.url.path)
+            if hasattr(request, "url")
+            else getattr(request, "path", "unknown")
+        )
+        method = getattr(request, "method", "WebSocket")
+        user_agent = (
+            request.headers.get("user-agent", "unknown")
+            if hasattr(request, "headers")
+            else "unknown"
+        )
+        request_id = (
+            request.headers.get("x-request-id") if hasattr(request, "headers") else None
+        )
+
         return {
             "errors": attributes["errors"],
-            "endpoint": str(request.url.path),
-            "method": request.method,
-            "user_agent": request.headers.get("user-agent", "unknown"),
-            "request_id": request.headers.get("x-request-id"),
+            "endpoint": endpoint,
+            "method": method,
+            "user_agent": user_agent,
+            "request_id": request_id,
         }
 
     # For successful requests, log basic info but hide sensitive data
@@ -138,11 +155,22 @@ def custom_request_attributes_mapper(
             else:
                 filtered_values[key] = value
 
+    # Handle both Request and WebSocket objects for result
+    endpoint = (
+        str(request.url.path)
+        if hasattr(request, "url")
+        else getattr(request, "path", "unknown")
+    )
+    method = getattr(request, "method", "WebSocket")
+    request_id = (
+        request.headers.get("x-request-id") if hasattr(request, "headers") else None
+    )
+
     result = {
         "values": filtered_values,
-        "endpoint": str(request.url.path),
-        "method": request.method,
-        "request_id": request.headers.get("x-request-id"),
+        "endpoint": endpoint,
+        "method": method,
+        "request_id": request_id,
     }
 
     # Explicitly add session_id at the top level if found
@@ -165,9 +193,7 @@ def setup_logfire() -> bool:
         return _state.is_configured()
 
     try:
-        import logfire
-
-        config_kwargs = {
+        config_kwargs: Dict[str, Any] = {
             "service_name": settings.logfire__service_name,
             "environment": settings.logfire__environment,
         }
@@ -190,10 +216,12 @@ def setup_logfire() -> bool:
 
         # Handle token (SecretStr compatible)
         if settings.logfire__token:
-            token = settings.logfire__token
-            if hasattr(token, "get_secret_value"):
-                token = token.get_secret_value()
-            config_kwargs["token"] = token
+            token_value: str
+            if hasattr(settings.logfire__token, "get_secret_value"):
+                token_value = settings.logfire__token.get_secret_value()
+            else:
+                token_value = str(settings.logfire__token)
+            config_kwargs["token"] = token_value
         # Note: sample_rate is commented out as it's not supported in current version
         # if settings.logfire__sample_rate is not None:
         #     try:
@@ -234,8 +262,6 @@ def instrument_logfire() -> Dict[str, bool]:
         return _state.get_instrument_results()
 
     try:
-        import logfire
-
         # Instrument pydantic-ai
         if settings.logfire__instrument__pydantic_ai:
             try:
@@ -293,8 +319,6 @@ def instrument_fastapi(app: FastAPI) -> bool:
         return False
 
     try:
-        import logfire
-
         logfire.instrument_fastapi(
             app,
             request_attributes_mapper=custom_request_attributes_mapper,
@@ -318,7 +342,7 @@ def initialize_logfire(app: Optional[FastAPI] = None) -> Dict[str, Any]:
     Returns:
         dict: Initialization results with status for each component
     """
-    results = {
+    results: Dict[str, Any] = {
         "configured": False,
         "instrumentation": {
             "pydantic_ai": False,

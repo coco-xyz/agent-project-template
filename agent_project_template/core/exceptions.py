@@ -55,7 +55,7 @@ class ApplicationException(Exception):
             "message": self.message,
             "code": (
                 self.error_code.value
-                if hasattr(self.error_code, "value")
+                if self.error_code is not None and hasattr(self.error_code, "value")
                 else self.error_code
             ),
             "details": safe_details,
@@ -79,7 +79,7 @@ class ApplicationException(Exception):
         exc: Exception,
         message: str,
         error_code: Optional["ErrorCode"] = None,
-        **context,
+        **context: Any,
     ) -> "ApplicationException":
         """
         Wrap a lower-level exception into a business exception while preserving the exception chain.
@@ -105,7 +105,7 @@ class ApplicationException(Exception):
         """
         return cls(message=message, error_code=error_code, details=context, cause=exc)
 
-    def with_context(self, **kwargs) -> "ApplicationException":
+    def with_context(self, **kwargs: Any) -> "ApplicationException":
         """Add context details to the exception."""
         self.details.update(kwargs)
         return self
@@ -152,8 +152,8 @@ class ConfigurationException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -165,8 +165,8 @@ class DatabaseException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -178,8 +178,8 @@ class RedisException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -191,8 +191,8 @@ class AgentException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -204,8 +204,8 @@ class APIException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -217,8 +217,8 @@ class ValidationException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -230,8 +230,8 @@ class InternalServiceException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -243,8 +243,8 @@ class RequestParamException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -256,8 +256,8 @@ class AuthException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -269,8 +269,8 @@ class LLMCallException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -282,8 +282,8 @@ class DataProcessException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)
 
 
@@ -295,6 +295,6 @@ class CallbackServiceException(ApplicationException):
         message: str,
         error_code: Optional["ErrorCode | str"] = None,
         details: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(message, error_code, details, **kwargs)

@@ -20,13 +20,14 @@ class DemoDeps(BaseModel):
 
 
 # Create the demo agent
-demo_agent = Agent[str](
+demo_agent = Agent(
     model=get_demo_model(),
+    deps_type=DemoDeps,
     system_prompt="You are a helpful AI assistant. Be friendly and concise.",
 )
 
 
-@demo_agent.tool
+@demo_agent.tool_plain
 def get_current_time() -> str:
     """Get the current time."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -54,7 +55,7 @@ async def handle_demo_agent(user_input: str, deps: Optional[DemoDeps] = None) ->
             )
 
         result = await demo_agent.run(user_input, deps=deps)
-        return result.data
+        return result.output
 
     except Exception as e:
         return f"Demo fallback response to '{user_input}': Error occurred - {str(e)}"

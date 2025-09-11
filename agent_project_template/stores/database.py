@@ -42,7 +42,6 @@ class PoolStatus:
     size: int
     checked_out: int
     overflow: int
-    invalid: int
 
 
 # Global SQLAlchemy base
@@ -109,11 +108,11 @@ def get_pool_status() -> PoolStatus:
     """
     try:
         pool = engine.pool
+        # QueuePool specific attributes - use getattr with defaults for safety
         return PoolStatus(
-            size=pool.size(),
-            checked_out=pool.checkedout(),
-            overflow=pool.overflow(),
-            invalid=pool.invalid(),
+            size=getattr(pool, "size", lambda: 0)(),
+            checked_out=getattr(pool, "checkedout", lambda: 0)(),
+            overflow=getattr(pool, "overflow", lambda: 0)(),
         )
     except Exception as e:
         logger.error("Failed to get pool status: %s", str(e))
@@ -350,11 +349,10 @@ def test_connection() -> Dict[str, Any]:
         # Log pool status for monitoring
         logger.info(
             "Database connection test - Pool status: Size=%d, Checked out=%d, "
-            "Overflow=%d, Invalid=%d",
+            "Overflow=%d",
             pool_status.size,
             pool_status.checked_out,
             pool_status.overflow,
-            pool_status.invalid,
         )
 
         # 安全地渲染 URL
@@ -376,7 +374,6 @@ def test_connection() -> Dict[str, Any]:
                 "size": pool_status.size,
                 "checked_out": pool_status.checked_out,
                 "overflow": pool_status.overflow,
-                "invalid": pool_status.invalid,  # 添加缺失的字段
             },
             "engine_url": safe_url,
         }

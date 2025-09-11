@@ -204,6 +204,14 @@ ERROR_CODE_MAP: Mapping[ErrorCode, int] = MappingProxyType(
 )
 
 
+def _get_status_for_string(error_code_str: str) -> int:
+    """Helper function to get status code for string error code."""
+    for code in ERROR_CODE_MAP:
+        if code.value == error_code_str:
+            return ERROR_CODE_MAP[code]
+    return 500
+
+
 def get_http_status_code(error_code: ErrorCode | str) -> int:
     """
     Get HTTP status code for an error code.
@@ -215,12 +223,10 @@ def get_http_status_code(error_code: ErrorCode | str) -> int:
         HTTP status code (defaults to 500 if not found)
     """
     if isinstance(error_code, str):
-        # Try to find matching enum member by value
-        for code in ERROR_CODE_MAP:
-            if code.value == error_code:
-                return ERROR_CODE_MAP[code]
-        return 500
-    return ERROR_CODE_MAP.get(error_code, 500)
+        return _get_status_for_string(error_code)
+
+    # At this point, mypy knows error_code is ErrorCode
+    return ERROR_CODE_MAP.get(error_code, 500)  # type: ignore[unreachable]
 
 
 def get_error_info(error_code: ErrorCode | str) -> Dict[str, Any]:

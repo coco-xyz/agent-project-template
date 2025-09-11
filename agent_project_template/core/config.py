@@ -215,22 +215,22 @@ class Settings(BaseSettings):
     @property
     def cors_allow_origins_list(self) -> List[str]:
         """Convert comma-separated origins to list."""
-        return [origin.strip() for origin in self.cors__allow_origins.split(",")]
+        return [origin.strip() for origin in str(self.cors__allow_origins).split(",")]
 
     @property
     def cors_allow_methods_list(self) -> List[str]:
         """Convert comma-separated methods to list."""
-        return [method.strip() for method in self.cors__allow_methods.split(",")]
+        return [method.strip() for method in str(self.cors__allow_methods).split(",")]
 
     @property
     def cors_allow_headers_list(self) -> List[str]:
         """Convert comma-separated headers to list."""
-        return [header.strip() for header in self.cors__allow_headers.split(",")]
+        return [header.strip() for header in str(self.cors__allow_headers).split(",")]
 
     @property
     def upload_allowed_extensions_list(self) -> List[str]:
         """Convert comma-separated extensions to list."""
-        return [ext.strip() for ext in self.upload_allowed_extensions.split(",")]
+        return [ext.strip() for ext in str(self.upload_allowed_extensions).split(",")]
 
     model_config = SettingsConfigDict(
         env_file=".env",

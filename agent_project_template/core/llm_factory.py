@@ -5,7 +5,7 @@ Simple factory function to create LLM models based on provider and model name.
 Also supports creating FallbackModel instances for improved reliability.
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic_ai.models import Model
 from pydantic_ai.models.fallback import FallbackModel
@@ -15,15 +15,13 @@ from .error_codes import InternalServiceErrorCode
 from .exceptions import InternalServiceException
 
 
-def _extract_secret(secret_str) -> Optional[str]:
+def _extract_secret(secret_str: Any) -> Optional[str]:
     """Safely extract secret value from SecretStr or return None."""
     if secret_str is None:
         return None
-    return (
-        secret_str.get_secret_value()
-        if hasattr(secret_str, "get_secret_value")
-        else secret_str
-    )
+    if hasattr(secret_str, "get_secret_value"):
+        return str(secret_str.get_secret_value())
+    return str(secret_str)
 
 
 def create_llm_model(model_name: str, provider: str) -> Model:
@@ -81,6 +79,12 @@ def _create_openai_model(model_name: str) -> Model:
     from pydantic_ai.providers.openai import OpenAIProvider
 
     api_key = _extract_secret(settings.ai__openai_api_key)
+    if api_key is None:
+        raise InternalServiceException(
+            message="OpenAI API key is not configured",
+            error_code=InternalServiceErrorCode.OPERATION_FAILED,
+            details={"provider": "openai", "model_name": model_name},
+        )
     provider = OpenAIProvider(api_key=api_key)
     return OpenAIChatModel(model_name, provider=provider)
 
@@ -91,6 +95,12 @@ def _create_google_model(model_name: str) -> Model:
     from pydantic_ai.providers.google import GoogleProvider
 
     api_key = _extract_secret(settings.ai__google_api_key)
+    if api_key is None:
+        raise InternalServiceException(
+            message="Google API key is not configured",
+            error_code=InternalServiceErrorCode.OPERATION_FAILED,
+            details={"provider": "google", "model_name": model_name},
+        )
     provider = GoogleProvider(api_key=api_key)
     return GoogleModel(model_name, provider=provider)
 
@@ -101,6 +111,12 @@ def _create_openrouter_model(model_name: str) -> Model:
     from pydantic_ai.providers.openrouter import OpenRouterProvider
 
     api_key = _extract_secret(settings.ai__openrouter_api_key)
+    if api_key is None:
+        raise InternalServiceException(
+            message="OpenRouter API key is not configured",
+            error_code=InternalServiceErrorCode.OPERATION_FAILED,
+            details={"provider": "openrouter", "model_name": model_name},
+        )
     provider = OpenRouterProvider(api_key=api_key)
     return OpenAIChatModel(model_name, provider=provider)
 
@@ -111,6 +127,12 @@ def _create_anthropic_model(model_name: str) -> Model:
     from pydantic_ai.providers.anthropic import AnthropicProvider
 
     api_key = _extract_secret(settings.ai__anthropic_api_key)
+    if api_key is None:
+        raise InternalServiceException(
+            message="Anthropic API key is not configured",
+            error_code=InternalServiceErrorCode.OPERATION_FAILED,
+            details={"provider": "anthropic", "model_name": model_name},
+        )
     provider = AnthropicProvider(api_key=api_key)
     return AnthropicModel(model_name, provider=provider)
 
@@ -147,7 +169,10 @@ def create_fallback_model(primary_model_name: str, primary_provider: str) -> Mod
     except Exception as e:
         raise InternalServiceException.wrap(
             e,
-            message=f"Failed to create fallback model {primary_model_name} with provider {primary_provider}",
+            message=(
+                f"Failed to create fallback model {primary_model_name} "
+                f"with provider {primary_provider}"
+            ),
             error_code=InternalServiceErrorCode.OPERATION_FAILED,
             primary_provider=primary_provider,
             primary_model_name=primary_model_name,

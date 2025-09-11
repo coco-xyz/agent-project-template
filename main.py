@@ -10,14 +10,17 @@ import os
 import sys
 from typing import Optional
 
+from fastapi import FastAPI
+
 # Only import essential configuration, avoid import-time side effects
+settings: Optional["Settings"] = None
 try:
-    from agent_project_template.core.config import settings
+    from agent_project_template.core.config import Settings, settings
 except ImportError:
-    settings = None
+    pass
 
 
-async def run_cli_mode():
+async def run_cli_mode() -> None:
     """
     Run the application in CLI mode with a demo agent.
     """
@@ -89,7 +92,7 @@ async def run_cli_mode():
             print(f"❌ Error: {e}")
 
 
-def create_app():
+def create_app() -> FastAPI:
     """
     Factory function to create FastAPI application.
 
@@ -128,10 +131,8 @@ def create_app():
                 mount_prefix="",
             )
 
-    except ImportError as e:
+    except ImportError:
         # Fallback if API components are not available
-        from fastapi import FastAPI
-
         app = FastAPI(
             title="Agent Project Template",
             description="AI Agent Application Template (Minimal Mode)",
@@ -139,7 +140,7 @@ def create_app():
         )
 
         @app.get("/")
-        async def root():
+        async def root() -> dict[str, str]:
             return {
                 "message": "Agent Project Template API",
                 "status": "running",
@@ -149,7 +150,7 @@ def create_app():
         return app
 
 
-def main():
+def main() -> None:
     """
     Main entry point with CLI argument parsing.
     """
@@ -236,7 +237,7 @@ Examples:
                 host=args.host,
                 port=args.port,
                 reload=args.reload or (settings.debug if settings else True),
-                log_level=settings.log_level.lower() if settings else "info",
+                log_level=str(settings.log_level).lower() if settings else "info",
             )
         except Exception as e:
             print(f"❌ Error starting API server: {e}")

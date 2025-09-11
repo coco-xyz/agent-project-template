@@ -22,10 +22,10 @@ def _get_setting(name: str, default: Any) -> Any:
 
 
 @lru_cache(maxsize=1)
-def _get_logfire_module():
+def _get_logfire_module() -> Any:
     """Get cached logfire module or None if not available."""
     try:
-        import logfire as _lf  # type: ignore
+        import logfire as _lf
 
         return _lf
     except Exception:
@@ -70,7 +70,7 @@ def clear_session_id() -> None:
     _session_id_context.set(None)
 
 
-def get_logfire_with_session():
+def get_logfire_with_session() -> Any:
     """
     Get a logfire instance with session ID as tag if available.
 
@@ -97,12 +97,17 @@ class SessionAwareLogfireHandler(logging.Handler):
     Custom Logfire handler that automatically adds session ID as tag.
     """
 
-    def __init__(self, level=logging.NOTSET, fallback=None, logfire_instance=None):
+    def __init__(
+        self,
+        level: int = logging.NOTSET,
+        fallback: Optional[logging.Handler] = None,
+        logfire_instance: Any = None,
+    ) -> None:
         super().__init__(level=level)
         self.fallback = fallback or logging.StreamHandler(sys.stderr)
         self.logfire_instance = logfire_instance
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         """Send the log to Logfire with session tag if available."""
         try:
             # Prefer cached instance if provided
@@ -273,7 +278,7 @@ def get_logging_config() -> Dict[str, Any]:
     return config
 
 
-def setup_logfire_handler():
+def setup_logfire_handler() -> None:
     """
     Set up Logfire handler after logfire.configure() has been called.
     This should be called from main.py after Logfire is configured.

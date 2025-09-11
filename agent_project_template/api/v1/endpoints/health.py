@@ -34,9 +34,9 @@ async def check_database_health() -> Dict[str, Any]:
 async def check_redis_health() -> Dict[str, Any]:
     """Check Redis connection health."""
     try:
-        from agent_project_template.stores.redis_client import get_redis_client
+        from agent_project_template.stores.redis_client import get_redis_client_async
 
-        redis_client = get_redis_client()
+        redis_client = await get_redis_client_async()
         health = await redis_client.health_check()
         return {"status": health.get("status", "unknown"), "details": health}
     except Exception as e:
@@ -55,7 +55,7 @@ async def check_redis_health() -> Dict[str, Any]:
         503: {"model": ErrorResponse, "description": "Service unavailable"},
     },
 )
-async def health_check():
+async def health_check() -> HealthResponse:
     """
     Comprehensive health check endpoint for the API.
 

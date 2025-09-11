@@ -4,7 +4,9 @@ API Factory
 Centralized API setup with middleware, CORS, and monitoring configuration.
 """
 
-from fastapi import FastAPI
+from typing import Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -152,7 +154,9 @@ def setup_metrics_hooks(app: FastAPI) -> None:
     # Can be extended with Prometheus, OpenTelemetry, etc.
 
     @app.middleware("http")
-    async def metrics_middleware(request, call_next):
+    async def metrics_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Simple metrics collection middleware."""
         import time
 

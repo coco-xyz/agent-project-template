@@ -9,7 +9,7 @@ resume data modification.
 import asyncio
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from agent_project_template.core.config import settings
 from agent_project_template.core.error_codes import RedisErrorCode
@@ -143,7 +143,9 @@ class SessionLock:
             ) from e
 
     @asynccontextmanager
-    async def acquire_context(self, wait_timeout: int = 10):
+    async def acquire_context(
+        self, wait_timeout: int = 10
+    ) -> AsyncGenerator[Optional[str], None]:
         """
         Context manager for automatic lock acquisition and release.
 
@@ -190,7 +192,7 @@ class SessionLock:
 @asynccontextmanager
 async def session_lock_context(
     session_id: str, timeout: int = 30, wait_timeout: int = 10
-):
+) -> AsyncGenerator[Optional[str], None]:
     """
     Convenient context manager for session-level distributed lock.
 

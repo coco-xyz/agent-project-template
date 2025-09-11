@@ -41,7 +41,7 @@ class SnowflakeGenerator:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the SonyFlake generator (called only once due to singleton)."""
         if getattr(self, "_initialized", False):
             return

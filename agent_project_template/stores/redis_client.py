@@ -9,7 +9,7 @@ import json
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import quote
 
 import redis.asyncio as redis
@@ -29,7 +29,7 @@ class RedisClient:
     Redis client wrapper with connection pooling and common operations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Redis client with connection pool."""
         self._pool: Optional[ConnectionPool] = None
         self._client: Optional[redis.Redis] = None
@@ -50,7 +50,7 @@ class RedisClient:
 
         async with self._lock:
             if self._client is not None:
-                return self._client
+                return self._client  # type: ignore[unreachable]
 
             try:
                 # Build Redis connection URL from settings with proper password encoding
@@ -98,13 +98,13 @@ class RedisClient:
                     f"Redis connection failed: {str(e)}",
                 ) from e
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection and cleanup resources."""
         if self._client:
             await self._client.aclose()
             self._client = None
         if self._pool:
-            self._pool.disconnect()
+            await self._pool.disconnect()
             self._pool = None
         logger.info("Redis connection closed")
 
@@ -120,7 +120,8 @@ class RedisClient:
             Value or None if key doesn't exist
         """
         client = await self._ensure_connection()
-        return await client.get(key)
+        result = await client.get(key)
+        return str(result) if result is not None else None
 
     async def set(
         self, key: str, value: str, ex: Optional[int] = None, nx: bool = False
@@ -138,7 +139,8 @@ class RedisClient:
             True if successful, False otherwise
         """
         client = await self._ensure_connection()
-        return await client.set(key, value, ex=ex, nx=nx)
+        result = await client.set(key, value, ex=ex, nx=nx)
+        return bool(result)
 
     async def delete(self, *keys: str) -> int:
         """
@@ -151,7 +153,8 @@ class RedisClient:
             Number of keys deleted
         """
         client = await self._ensure_connection()
-        return await client.delete(*keys)
+        result = await client.delete(*keys)
+        return int(result)
 
     async def exists(self, key: str) -> bool:
         """
@@ -178,7 +181,8 @@ class RedisClient:
             True if successful, False otherwise
         """
         client = await self._ensure_connection()
-        return await client.expire(key, seconds)
+        result = await client.expire(key, seconds)
+        return bool(result)
 
     # JSON Operations
     async def set_json(self, key: str, data: Any, ex: Optional[int] = None) -> bool:
@@ -233,7 +237,8 @@ class RedisClient:
             Number of fields set
         """
         client = await self._ensure_connection()
-        return await client.hset(name, mapping=mapping)
+        result = await client.hset(name, mapping=mapping)  # type: ignore[misc]
+        return int(result) if result is not None else 0
 
     async def hget(self, name: str, key: str) -> Optional[str]:
         """
@@ -247,7 +252,8 @@ class RedisClient:
             Field value or None
         """
         client = await self._ensure_connection()
-        return await client.hget(name, key)
+        result = await client.hget(name, key)  # type: ignore[misc]
+        return str(result) if result is not None else None
 
     async def hgetall(self, name: str) -> Dict[str, str]:
         """
@@ -260,7 +266,8 @@ class RedisClient:
             Dictionary of field-value pairs
         """
         client = await self._ensure_connection()
-        return await client.hgetall(name)
+        result = await client.hgetall(name)  # type: ignore[misc]
+        return {str(k): str(v) for k, v in result.items()}
 
     async def hdel(self, name: str, *keys: str) -> int:
         """
@@ -274,7 +281,8 @@ class RedisClient:
             Number of fields deleted
         """
         client = await self._ensure_connection()
-        return await client.hdel(name, *keys)
+        result = await client.hdel(name, *keys)  # type: ignore[misc]
+        return int(result)
 
     # List Operations
     async def lpush(self, name: str, *values: str) -> int:
@@ -289,7 +297,8 @@ class RedisClient:
             List length after push
         """
         client = await self._ensure_connection()
-        return await client.lpush(name, *values)
+        result = await client.lpush(name, *values)  # type: ignore[misc]
+        return int(result)
 
     async def rpush(self, name: str, *values: str) -> int:
         """
@@ -303,7 +312,8 @@ class RedisClient:
             List length after push
         """
         client = await self._ensure_connection()
-        return await client.rpush(name, *values)
+        result = await client.rpush(name, *values)  # type: ignore[misc]
+        return int(result)
 
     async def lpop(self, name: str) -> Optional[str]:
         """
@@ -316,7 +326,8 @@ class RedisClient:
             Popped value or None
         """
         client = await self._ensure_connection()
-        return await client.lpop(name)
+        result = await client.lpop(name)  # type: ignore[misc]
+        return str(result) if result is not None else None
 
     async def rpop(self, name: str) -> Optional[str]:
         """
@@ -329,7 +340,8 @@ class RedisClient:
             Popped value or None
         """
         client = await self._ensure_connection()
-        return await client.rpop(name)
+        result = await client.rpop(name)  # type: ignore[misc]
+        return str(result) if result is not None else None
 
     async def lrange(self, name: str, start: int = 0, end: int = -1) -> List[str]:
         """
@@ -344,7 +356,8 @@ class RedisClient:
             List of values
         """
         client = await self._ensure_connection()
-        return await client.lrange(name, start, end)
+        result = await client.lrange(name, start, end)  # type: ignore[misc]
+        return [str(item) for item in result]
 
     # Distributed Lock Operations
     async def acquire_lock(
@@ -400,8 +413,9 @@ class RedisClient:
         """
 
         try:
-            result = await client.eval(lua_script, 1, lock_key, identifier)
-            if result:
+            result = await client.eval(lua_script, 1, lock_key, identifier)  # type: ignore[misc]
+            result_int = int(result) if result is not None else 0
+            if result_int:
                 logger.debug(
                     "Lock released: %s with identifier: %s", lock_key, identifier
                 )
@@ -416,7 +430,9 @@ class RedisClient:
             return False
 
     @asynccontextmanager
-    async def lock(self, lock_key: str, timeout: int = 30, wait_timeout: int = 10):
+    async def lock(
+        self, lock_key: str, timeout: int = 30, wait_timeout: int = 10
+    ) -> AsyncGenerator[str, None]:
         """
         Context manager for distributed lock.
 
@@ -514,35 +530,93 @@ class RedisClient:
             return {"status": "unhealthy", "error": str(e)}
 
 
-# Global Redis client instance
-_redis_client: Optional[RedisClient] = None
+class _RedisClientManager:
+    """Thread-safe Redis client manager using singleton pattern."""
+
+    def __init__(self) -> None:
+        self._client: Optional[RedisClient] = None
+        self._lock = asyncio.Lock()
+
+    @property
+    def client(self) -> Optional[RedisClient]:
+        """Get the current client instance (may be None)."""
+        return self._client
+
+    def get_client_sync(self) -> RedisClient:
+        """
+        Get Redis client instance synchronously with lazy initialization.
+
+        Returns:
+            RedisClient: Redis client instance
+
+        Note:
+            This method is for synchronous contexts only.
+            The actual connection is established lazily when first used.
+        """
+        if self._client is None:
+            self._client = RedisClient()
+        return self._client
+
+    async def get_client(self) -> RedisClient:
+        """
+        Get Redis client instance with lazy initialization.
+
+        Returns:
+            RedisClient: Redis client instance
+        """
+        if self._client is not None:
+            return self._client
+
+        async with self._lock:
+            if self._client is None:
+                self._client = RedisClient()
+            return self._client
+
+    async def close_client(self) -> None:
+        """Close Redis client and cleanup resources."""
+        async with self._lock:
+            if self._client:
+                await self._client.close()
+                self._client = None
+
+
+# Module-level client manager instance
+_client_manager = _RedisClientManager()
 
 
 def get_redis_client() -> RedisClient:
     """
-    Get global Redis client instance.
+    Get Redis client instance.
 
     Returns:
-        RedisClient: Global Redis client instance
+        RedisClient: Redis client instance
+
+    Note:
+        This function returns a client that may not be connected yet.
+        The actual connection is established lazily when first used.
     """
-    global _redis_client
-    if _redis_client is None:
-        _redis_client = RedisClient()
-    return _redis_client
+    return _client_manager.get_client_sync()
 
 
-async def close_redis_client():
-    """Close global Redis client."""
-    global _redis_client
-    if _redis_client:
-        await _redis_client.close()
-        _redis_client = None
+async def get_redis_client_async() -> RedisClient:
+    """
+    Get Redis client instance asynchronously with proper connection handling.
+
+    Returns:
+        RedisClient: Connected Redis client instance
+    """
+    return await _client_manager.get_client()
+
+
+async def close_redis_client() -> None:
+    """Close Redis client and cleanup resources."""
+    await _client_manager.close_client()
 
 
 async def test_redis_connection() -> Dict[str, Any]:
     """Test Redis connection and return status."""
     try:
-        client = get_redis_client()
+        client = await get_redis_client_async()
         result = await client.health_check()
 
         if result.get("status") == "healthy":

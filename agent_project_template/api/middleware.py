@@ -6,7 +6,7 @@ Simple middleware for request logging.
 
 import time
 import uuid
-from typing import Callable
+from typing import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,7 +21,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     Simple middleware to log API requests and responses.
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process request and log basic information.
 
@@ -99,7 +101,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     Stores the request ID in request.state.request_id and adds it to response headers.
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Process request and ensure request ID is available.
 

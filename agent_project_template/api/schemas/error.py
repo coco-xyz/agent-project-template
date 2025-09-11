@@ -21,10 +21,10 @@ class ValidationErrorDetail(BaseModel):
 class ErrorDetail(BaseModel):
     """Detailed error information."""
 
-    type: str = Field(..., description="Exception type", example="ValidationError")
+    type: str = Field(..., description="Exception type", examples=["ValidationError"])
     message: str = Field(..., description="Human-readable error message")
     code: Optional[str] = Field(
-        None, description="Machine-readable error code", example="VALIDATION_ERROR"
+        None, description="Machine-readable error code", examples=["VALIDATION_ERROR"]
     )
     details: Optional[Dict[str, Any]] = Field(
         None, description="Additional error details"

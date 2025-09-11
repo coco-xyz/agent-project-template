@@ -29,7 +29,7 @@ router = APIRouter()
         503: {"model": ErrorResponse, "description": "Agent unavailable"},
     },
 )
-async def chat_with_agent(request: DemoChatRequest):
+async def chat_with_agent(request: DemoChatRequest) -> DemoChatResponse:
     """
     Chat with the demo agent.
 

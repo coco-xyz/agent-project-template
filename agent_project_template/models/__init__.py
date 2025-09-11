@@ -8,4 +8,4 @@ This package is currently empty but can be used to define:
 - Custom data structures
 """
 
-__all__ = []
+__all__: list[str] = []

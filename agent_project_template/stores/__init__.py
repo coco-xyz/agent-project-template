@@ -26,6 +26,7 @@ from .redis_client import (
     RedisClient,
     close_redis_client,
     get_redis_client,
+    get_redis_client_async,
     test_redis_connection,
 )
 from .redis_lock import SessionLock, session_lock_context
@@ -45,6 +46,7 @@ __all__ = [
     # Redis
     "RedisClient",
     "get_redis_client",
+    "get_redis_client_async",
     "close_redis_client",
     "test_redis_connection",
     # Redis Lock
