@@ -5,6 +5,6 @@ Pydantic models for demo API request and response data.
 """
 
 from .requests import DemoChatRequest
-from .responses import DemoChatResponse, DemoHealthResponse
+from .responses import DemoChatResponse, HealthResponse
 
-__all__ = ["DemoChatRequest", "DemoChatResponse", "DemoHealthResponse"]
+__all__ = ["DemoChatRequest", "DemoChatResponse", "HealthResponse"]

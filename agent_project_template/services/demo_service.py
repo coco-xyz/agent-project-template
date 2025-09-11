@@ -5,14 +5,16 @@ Business logic layer for the demo functionality in Agent Project Template.
 """
 
 from typing import Optional
-from agent_project_template.agents import handle_demo_agent, DemoDeps
 
+from agent_project_template.agents import DemoDeps, handle_demo_agent
 
 
 class DemoService:
     """Demo service for handling agent interactions."""
 
-    async def process_message(self, user_message: str, user_name: Optional[str] = None) -> str:
+    async def process_message(
+        self, user_message: str, user_name: Optional[str] = None
+    ) -> str:
         """
         Process a message with the demo agent.
 

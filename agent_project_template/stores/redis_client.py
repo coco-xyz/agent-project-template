@@ -8,15 +8,17 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Optional, Any, Dict, List
 from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
+
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
+
 # Fast-failing imports from core
 from agent_project_template.core.config import settings
-from agent_project_template.core.exceptions import RedisException
 from agent_project_template.core.error_codes import RedisErrorCode
+from agent_project_template.core.exceptions import RedisException
 from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -53,7 +55,11 @@ class RedisClient:
             try:
                 # Build Redis connection URL from settings with proper password encoding
                 scheme = "rediss" if settings.redis__ssl else "redis"
-                auth = f":{quote(settings.redis__password)}@" if settings.redis__password else ""
+                auth = (
+                    f":{quote(settings.redis__password)}@"
+                    if settings.redis__password
+                    else ""
+                )
                 redis_url = (
                     f"{scheme}://{auth}{settings.redis__host}:"
                     f"{settings.redis__port}/{settings.redis__db}"
@@ -89,7 +95,7 @@ class RedisClient:
                 logger.error("Failed to connect to Redis: %s", str(e))
                 raise RedisException(
                     RedisErrorCode.CONNECTION_FAILED,
-                    f"Redis connection failed: {str(e)}"
+                    f"Redis connection failed: {str(e)}",
                 ) from e
 
     async def close(self):
@@ -117,11 +123,7 @@ class RedisClient:
         return await client.get(key)
 
     async def set(
-        self,
-        key: str,
-        value: str,
-        ex: Optional[int] = None,
-        nx: bool = False
+        self, key: str, value: str, ex: Optional[int] = None, nx: bool = False
     ) -> bool:
         """
         Set key-value pair.
@@ -179,12 +181,7 @@ class RedisClient:
         return await client.expire(key, seconds)
 
     # JSON Operations
-    async def set_json(
-        self,
-        key: str,
-        data: Any,
-        ex: Optional[int] = None
-    ) -> bool:
+    async def set_json(self, key: str, data: Any, ex: Optional[int] = None) -> bool:
         """
         Set JSON data.
 
@@ -351,10 +348,7 @@ class RedisClient:
 
     # Distributed Lock Operations
     async def acquire_lock(
-        self,
-        lock_key: str,
-        timeout: int = 30,
-        identifier: Optional[str] = None
+        self, lock_key: str, timeout: int = 30, identifier: Optional[str] = None
     ) -> Optional[str]:
         """
         Acquire distributed lock.
@@ -408,22 +402,21 @@ class RedisClient:
         try:
             result = await client.eval(lua_script, 1, lock_key, identifier)
             if result:
-                logger.debug("Lock released: %s with identifier: %s", lock_key, identifier)
+                logger.debug(
+                    "Lock released: %s with identifier: %s", lock_key, identifier
+                )
                 return True
 
-            logger.warning("Lock release failed: %s with identifier: %s", lock_key, identifier)
+            logger.warning(
+                "Lock release failed: %s with identifier: %s", lock_key, identifier
+            )
             return False
         except Exception as e:
             logger.error("Error releasing lock %s: %s", lock_key, str(e))
             return False
 
     @asynccontextmanager
-    async def lock(
-        self,
-        lock_key: str,
-        timeout: int = 30,
-        wait_timeout: int = 10
-    ):
+    async def lock(self, lock_key: str, timeout: int = 30, wait_timeout: int = 10):
         """
         Context manager for distributed lock.
 
@@ -451,7 +444,7 @@ class RedisClient:
         if not identifier:
             raise RedisException(
                 RedisErrorCode.LOCK_FAILED,
-                f"Failed to acquire lock {lock_key} within {wait_timeout} seconds"
+                f"Failed to acquire lock {lock_key} within {wait_timeout} seconds",
             )
 
         try:
@@ -476,19 +469,25 @@ class RedisClient:
             ping_time = time.time() - start_time
 
             # Get Redis info
-            info = await client.info('server')
+            info = await client.info("server")
 
             # Get connection pool info
             pool_info = {}
             if self._pool:
                 try:
                     pool_info = {
-                        "max_connections": getattr(self._pool, 'max_connections', 'N/A'),
-                        "created_connections": getattr(self._pool, 'created_connections', 'N/A'),
-                        "available_connections": len(
-                            getattr(self._pool, '_available_connections', [])
+                        "max_connections": getattr(
+                            self._pool, "max_connections", "N/A"
                         ),
-                        "in_use_connections": len(getattr(self._pool, '_in_use_connections', []))
+                        "created_connections": getattr(
+                            self._pool, "created_connections", "N/A"
+                        ),
+                        "available_connections": len(
+                            getattr(self._pool, "_available_connections", [])
+                        ),
+                        "in_use_connections": len(
+                            getattr(self._pool, "_in_use_connections", [])
+                        ),
                     }
                 except Exception as e:
                     pool_info = {"error": f"Failed to get pool info: {str(e)}"}
@@ -496,10 +495,10 @@ class RedisClient:
             return {
                 "status": "healthy",
                 "ping_time_ms": round(ping_time * 1000, 2),
-                "redis_version": info.get('redis_version'),
-                "connected_clients": info.get('connected_clients'),
-                "used_memory_human": info.get('used_memory_human'),
-                "uptime_in_seconds": info.get('uptime_in_seconds'),
+                "redis_version": info.get("redis_version"),
+                "connected_clients": info.get("connected_clients"),
+                "used_memory_human": info.get("used_memory_human"),
+                "uptime_in_seconds": info.get("uptime_in_seconds"),
                 "connection_pool": pool_info,
                 "config": {
                     "ssl_enabled": settings.redis__ssl,
@@ -508,14 +507,11 @@ class RedisClient:
                     "port": settings.redis__port,
                     "connect_timeout_seconds": settings.redis__connect_timeout,
                     "socket_timeout_seconds": settings.redis__socket_timeout,
-                    "lock_retry_sleep_interval": settings.redis_lock__retry_sleep_interval
-                }
+                    "lock_retry_sleep_interval": settings.redis_lock__retry_sleep_interval,
+                },
             }
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            return {"status": "unhealthy", "error": str(e)}
 
 
 # Global Redis client instance
@@ -559,6 +555,5 @@ async def test_redis_connection() -> Dict[str, Any]:
     except Exception as e:
         logger.error("Redis connection test failed: %s", str(e))
         raise RedisException(
-            RedisErrorCode.CONNECTION_FAILED,
-            f"Redis connection test failed: {str(e)}"
+            RedisErrorCode.CONNECTION_FAILED, f"Redis connection test failed: {str(e)}"
         ) from e

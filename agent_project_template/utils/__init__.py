@@ -7,9 +7,9 @@ Common utility functions and helpers for Agent Project Template.
 # Snowflake ID utilities - fast-failing imports
 from .snowflake_generator import (
     SnowflakeGenerator,
-    get_snowflake_generator,
     generate_snowflake_id,
-    generate_snowflake_id_str
+    generate_snowflake_id_str,
+    get_snowflake_generator,
 )
 
 # Utils package exports - only utilities from this package

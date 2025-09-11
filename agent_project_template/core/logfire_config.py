@@ -14,11 +14,13 @@ Usage:
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from fastapi import FastAPI, Request
 
 from agent_project_template.core.config import settings
 from agent_project_template.core.logger import setup_logfire_handler
+
 
 class _LogfireState:
     """Internal state management for logfire configuration."""
@@ -29,7 +31,7 @@ class _LogfireState:
         self.instrument_results: Dict[str, bool] = {
             "pydantic_ai": False,
             "redis": False,
-            "httpx": False
+            "httpx": False,
         }
 
     def is_configured(self) -> bool:
@@ -127,7 +129,11 @@ def custom_request_attributes_mapper(
                 filtered_values[key] = {
                     "filename": getattr(value, "filename", "unknown"),
                     "content_type": getattr(value, "content_type", "unknown"),
-                    "size": getattr(value, "size", 0) if hasattr(value, "size") else "unknown"
+                    "size": (
+                        getattr(value, "size", 0)
+                        if hasattr(value, "size")
+                        else "unknown"
+                    ),
                 }
             else:
                 filtered_values[key] = value
@@ -185,7 +191,7 @@ def setup_logfire() -> bool:
         # Handle token (SecretStr compatible)
         if settings.logfire__token:
             token = settings.logfire__token
-            if hasattr(token, 'get_secret_value'):
+            if hasattr(token, "get_secret_value"):
                 token = token.get_secret_value()
             config_kwargs["token"] = token
         # Note: sample_rate is commented out as it's not supported in current version
@@ -197,7 +203,9 @@ def setup_logfire() -> bool:
 
         logfire.configure(**config_kwargs)
         startup_logger = logging.getLogger("agent_project_template.startup")
-        startup_logger.info("Logfire initialized for service: %s", settings.logfire__service_name)
+        startup_logger.info(
+            "Logfire initialized for service: %s", settings.logfire__service_name
+        )
 
         # Set up Logfire logging handler after configuration
         setup_logfire_handler()
@@ -251,7 +259,10 @@ def instrument_logfire() -> Dict[str, bool]:
             try:
                 capture_all = settings.logfire__httpx_capture_all
                 logfire.instrument_httpx(capture_all=capture_all)
-                logger.info("Logfire HTTPX instrumentation enabled (capture_all=%s)", capture_all)
+                logger.info(
+                    "Logfire HTTPX instrumentation enabled (capture_all=%s)",
+                    capture_all,
+                )
                 _state.update_instrument_result("httpx", True)
             except Exception as e:
                 logger.warning("Failed to instrument HTTPX with logfire: %s", e)
@@ -287,7 +298,7 @@ def instrument_fastapi(app: FastAPI) -> bool:
         logfire.instrument_fastapi(
             app,
             request_attributes_mapper=custom_request_attributes_mapper,
-            capture_headers=True
+            capture_headers=True,
         )
         logger.info("FastAPI instrumented with logfire")
         return True
@@ -313,8 +324,8 @@ def initialize_logfire(app: Optional[FastAPI] = None) -> Dict[str, Any]:
             "pydantic_ai": False,
             "redis": False,
             "httpx": False,
-            "fastapi": False
-        }
+            "fastapi": False,
+        },
     }
 
     # Set up basic logfire configuration

@@ -4,49 +4,64 @@ LLM Factory
 Simple factory function to create LLM models based on provider and model name.
 Also supports creating FallbackModel instances for improved reliability.
 """
+
 from typing import Optional
+
 from pydantic_ai.models import Model
 from pydantic_ai.models.fallback import FallbackModel
+
 from .config import settings
-from .exceptions import InternalServiceException
 from .error_codes import InternalServiceErrorCode
+from .exceptions import InternalServiceException
 
 
 def _extract_secret(secret_str) -> Optional[str]:
     """Safely extract secret value from SecretStr or return None."""
     if secret_str is None:
         return None
-    return secret_str.get_secret_value() if hasattr(secret_str, 'get_secret_value') else secret_str
+    return (
+        secret_str.get_secret_value()
+        if hasattr(secret_str, "get_secret_value")
+        else secret_str
+    )
 
 
 def create_llm_model(model_name: str, provider: str) -> Model:
     """
     Create an LLM model instance based on provider and model name.
-    
+
     Args:
         model_name (str): Model name, e.g. 'gpt-4o', 'claude-3-5-sonnet'
         provider (str): Provider name ('openai', 'google', 'openrouter', 'anthropic')
-        
+
     Returns:
         Model: The LLM model instance
-        
+
     Raises:
         InternalServiceException: If provider is unsupported or model creation fails
     """
     try:
-        if provider == 'openai':
+        if provider == "openai":
             return _create_openai_model(model_name)
-        elif provider == 'google':
+        elif provider == "google":
             return _create_google_model(model_name)
-        elif provider == 'openrouter':
+        elif provider == "openrouter":
             return _create_openrouter_model(model_name)
-        elif provider == 'anthropic':
+        elif provider == "anthropic":
             return _create_anthropic_model(model_name)
         else:
             raise InternalServiceException(
                 message=f"Unsupported provider: {provider}",
                 error_code=InternalServiceErrorCode.OPERATION_FAILED,
-                details={"provider": provider, "supported_providers": ["openai", "google", "openrouter", "anthropic"]}
+                details={
+                    "provider": provider,
+                    "supported_providers": [
+                        "openai",
+                        "google",
+                        "openrouter",
+                        "anthropic",
+                    ],
+                },
             )
     except InternalServiceException:
         raise
@@ -56,7 +71,7 @@ def create_llm_model(model_name: str, provider: str) -> Model:
             message=f"Failed to create model {model_name} with provider {provider}",
             error_code=InternalServiceErrorCode.OPERATION_FAILED,
             provider=provider,
-            model_name=model_name
+            model_name=model_name,
         )
 
 
@@ -100,10 +115,7 @@ def _create_anthropic_model(model_name: str) -> Model:
     return AnthropicModel(model_name, provider=provider)
 
 
-def create_fallback_model(
-    primary_model_name: str,
-    primary_provider: str
-) -> Model:
+def create_fallback_model(primary_model_name: str, primary_provider: str) -> Model:
     """
     Create a FallbackModel instance with primary model and configured fallback model.
 
@@ -124,7 +136,7 @@ def create_fallback_model(
         # Create configured fallback model
         fallback_model = create_llm_model(
             model_name=settings.ai__fallback__model_name,
-            provider=settings.ai__fallback__provider
+            provider=settings.ai__fallback__provider,
         )
 
         # Create FallbackModel with primary and fallback
@@ -140,6 +152,5 @@ def create_fallback_model(
             primary_provider=primary_provider,
             primary_model_name=primary_model_name,
             fallback_provider=settings.ai__fallback__provider,
-            fallback_model_name=settings.ai__fallback__model_name
+            fallback_model_name=settings.ai__fallback__model_name,
         )
-

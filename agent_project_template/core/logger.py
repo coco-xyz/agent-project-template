@@ -8,25 +8,29 @@ Based on official Logfire documentation best practices.
 import logging
 import logging.config
 import sys
-from typing import Dict, Any, Optional
-from pathlib import Path
-from functools import lru_cache
 from contextvars import ContextVar
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from agent_project_template.core.config import settings
+
 
 def _get_setting(name: str, default: Any) -> Any:
     """Get a setting with a default fallback."""
     return getattr(settings, name, default)
+
 
 @lru_cache(maxsize=1)
 def _get_logfire_module():
     """Get cached logfire module or None if not available."""
     try:
         import logfire as _lf  # type: ignore
+
         return _lf
     except Exception:
         return None
+
 
 def _sanitize_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
     """Make record attributes safe for structured logging and redact sensitive keys."""
@@ -46,8 +50,9 @@ def _sanitize_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
             safe[k] = "<unserializable>"
     return safe
 
+
 # Context variable to store session ID for logging
-_session_id_context: ContextVar[Optional[str]] = ContextVar('session_id', default=None)
+_session_id_context: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
 
 
 def set_session_id(session_id: str) -> None:
@@ -109,7 +114,10 @@ class SessionAwareLogfireHandler(logging.Handler):
             # Check if instrumentation is suppressed (best-effort)
             try:
                 from opentelemetry.context import get_current
-                from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+                from opentelemetry.instrumentation.utils import (
+                    _SUPPRESS_INSTRUMENTATION_KEY,
+                )
+
                 if get_current().get(_SUPPRESS_INSTRUMENTATION_KEY):
                     self.fallback.handle(record)
                     return
@@ -135,18 +143,40 @@ class SessionAwareLogfireHandler(logging.Handler):
                 logfire_with_session = self.logfire_instance or logfire
 
             # Prepare attributes from log record
-            raw_attrs = {k: v for k, v in record.__dict__.items()
-                         if k not in ['name', 'msg', 'args', 'levelname', 'levelno',
-                                    'pathname', 'filename', 'module', 'lineno', 'funcName',
-                                    'created', 'msecs', 'relativeCreated', 'thread',
-                                    'threadName', 'processName', 'process', 'getMessage',
-                                    'exc_info', 'exc_text', 'stack_info']}
+            raw_attrs = {
+                k: v
+                for k, v in record.__dict__.items()
+                if k
+                not in [
+                    "name",
+                    "msg",
+                    "args",
+                    "levelname",
+                    "levelno",
+                    "pathname",
+                    "filename",
+                    "module",
+                    "lineno",
+                    "funcName",
+                    "created",
+                    "msecs",
+                    "relativeCreated",
+                    "thread",
+                    "threadName",
+                    "processName",
+                    "process",
+                    "getMessage",
+                    "exc_info",
+                    "exc_text",
+                    "stack_info",
+                ]
+            }
             attributes = _sanitize_attributes(raw_attrs)
 
             # Add code location attributes
-            attributes['code.filepath'] = record.pathname
-            attributes['code.lineno'] = record.lineno
-            attributes['code.function'] = record.funcName
+            attributes["code.filepath"] = record.pathname
+            attributes["code.lineno"] = record.lineno
+            attributes["code.function"] = record.funcName
 
             # Format the message
             try:
@@ -159,7 +189,7 @@ class SessionAwareLogfireHandler(logging.Handler):
                 level=record.levelname.lower(),
                 msg_template=msg,
                 attributes=attributes,
-                exc_info=record.exc_info
+                exc_info=record.exc_info,
             )
 
         except Exception:
@@ -176,16 +206,16 @@ def get_logging_config() -> Dict[str, Any]:
     """
 
     # Determine log level
-    log_level = (_get_setting('log_level', 'info') or 'info').upper()
+    log_level = (_get_setting("log_level", "info") or "info").upper()
 
     # Create logs directory for fallback (configurable)
-    logs_dir = Path(_get_setting('log__dir', 'logs'))
+    logs_dir = Path(_get_setting("log__dir", "logs"))
     logs_dir.mkdir(exist_ok=True)
 
     # Determine file path - use custom path if provided, otherwise use dir + default filename
-    file_path = _get_setting('log__file_path', None)
+    file_path = _get_setting("log__file_path", None)
     if file_path is None:
-        file_path = str(logs_dir / 'agent_project_template.log')
+        file_path = str(logs_dir / "agent_project_template.log")
 
     # Base handlers - always include console and file for fallback
     handlers = {
@@ -193,21 +223,21 @@ def get_logging_config() -> Dict[str, Any]:
             "class": "logging.StreamHandler",
             "level": log_level,
             "formatter": "simple",
-            "stream": sys.stdout
+            "stream": sys.stdout,
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "level": _get_setting('log__file_level', 'INFO'),
+            "level": _get_setting("log__file_level", "INFO"),
             "formatter": "detailed",
             "filename": file_path,
-            "maxBytes": int(_get_setting('log__file_max_bytes', 10 * 1024 * 1024)),
-            "backupCount": int(_get_setting('log__file_backup_count', 3)),
-            "encoding": "utf-8"
-        }
+            "maxBytes": int(_get_setting("log__file_max_bytes", 10 * 1024 * 1024)),
+            "backupCount": int(_get_setting("log__file_backup_count", 3)),
+            "encoding": "utf-8",
+        },
     }
 
     # Configure Logfire handler if enabled (added later via setup_logfire_handler)
-    if _get_setting('logfire__enabled', False):
+    if _get_setting("logfire__enabled", False):
         pass
 
     # Base configuration
@@ -217,12 +247,12 @@ def get_logging_config() -> Dict[str, Any]:
         "formatters": {
             "simple": {
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                "datefmt": "%H:%M:%S"
+                "datefmt": "%H:%M:%S",
             },
             "detailed": {
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S"
-            }
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
         },
         "handlers": handlers,
         "loggers": {
@@ -230,26 +260,14 @@ def get_logging_config() -> Dict[str, Any]:
             "agent_project_template": {
                 "level": log_level,
                 "handlers": ["console", "file"],
-                "propagate": False
+                "propagate": False,
             },
             # Third-party library loggers - reduce verbosity but keep important logs
-            "uvicorn.access": {
-                "level": "WARNING",
-                "propagate": True
-            },
-            "httpx": {
-                "level": "WARNING",
-                "propagate": True
-            },
-            "urllib3": {
-                "level": "WARNING",
-                "propagate": True
-            }
+            "uvicorn.access": {"level": "WARNING", "propagate": True},
+            "httpx": {"level": "WARNING", "propagate": True},
+            "urllib3": {"level": "WARNING", "propagate": True},
         },
-        "root": {
-            "level": "WARNING",
-            "handlers": ["console"]
-        }
+        "root": {"level": "WARNING", "handlers": ["console"]},
     }
 
     return config
@@ -261,7 +279,7 @@ def setup_logfire_handler():
     This should be called from main.py after Logfire is configured.
     """
 
-    if not _get_setting('logfire__enabled', False):
+    if not _get_setting("logfire__enabled", False):
         return
 
     try:
@@ -271,24 +289,26 @@ def setup_logfire_handler():
 
         # Create fallback handler with urllib3 filtering
         fallback_handler = logging.StreamHandler(sys.stderr)
-        fallback_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
+        fallback_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
 
         # Filter out urllib3 debug logs from fallback handler
-        urllib3_filter = logging.Filter('urllib3')
+        urllib3_filter = logging.Filter("urllib3")
         fallback_handler.addFilter(lambda record: not urllib3_filter.filter(record))
 
         # Create our custom session-aware Logfire handler
         logfire_handler = SessionAwareLogfireHandler(
-            level=_get_setting('log_level', 'INFO').upper(),
+            level=_get_setting("log_level", "INFO").upper(),
             fallback=fallback_handler,
-            logfire_instance=logfire
+            logfire_instance=logfire,
         )
 
         # Get agent_project_template logger and add Logfire handler (avoid duplicates)
         agent_logger = logging.getLogger("agent_project_template")
-        if not any(isinstance(h, SessionAwareLogfireHandler) for h in agent_logger.handlers):
+        if not any(
+            isinstance(h, SessionAwareLogfireHandler) for h in agent_logger.handlers
+        ):
             agent_logger.addHandler(logfire_handler)
 
         # Log successful Logfire integration
@@ -317,9 +337,9 @@ def setup_logging() -> None:
     logger = logging.getLogger("agent_project_template.startup")
     logger.info(
         "Logging system initialized - Environment: %s, Level: %s, Logfire: %s",
-        _get_setting('environment', 'development'),
-        _get_setting('log_level', 'info'),
-        _get_setting('logfire__enabled', False)
+        _get_setting("environment", "development"),
+        _get_setting("log_level", "info"),
+        _get_setting("logfire__enabled", False),
     )
 
 

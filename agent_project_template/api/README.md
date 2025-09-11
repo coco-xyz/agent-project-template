@@ -64,15 +64,16 @@ app.include_router(router, prefix="/api")
 
 ## Middleware Stack
 
-The middleware is applied in this order (first added = last executed):
+The middleware is applied in this order (execution order for incoming requests):
 
-1. **Exception Handlers** - Global error handling
-2. **Request Logging** - HTTP request/response logging
-3. **Request ID** - Generate/propagate X-Request-ID headers
+1. **Metrics** - Performance monitoring hooks
+2. **Compression** - GZip response compression
+3. **CORS** - Cross-origin resource sharing
 4. **Security** - TrustedHost (production only)
-5. **CORS** - Cross-origin resource sharing
-6. **Compression** - GZip response compression
-7. **Metrics** - Performance monitoring hooks
+5. **Request Logging** - HTTP request/response logging
+6. **Request ID** - Generate/propagate X-Request-ID headers
+
+Note: Exception handlers are registered separately and handle errors at all levels.
 
 ## Configuration
 
@@ -137,7 +138,7 @@ app = create_api()
 client = TestClient(app)
 
 def test_health():
-    response = client.get("/api/v1/demo/health")
+    response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert "X-Request-ID" in response.headers
 ```

@@ -16,10 +16,15 @@ Usage:
     )
 """
 
-from typing import Optional, Dict, Callable
+from typing import Callable, Dict, Optional
+
 from pydantic_ai.models import Model
+
 from agent_project_template.core.config import settings
-from agent_project_template.core.llm_factory import create_fallback_model, create_llm_model
+from agent_project_template.core.llm_factory import (
+    create_fallback_model,
+    create_llm_model,
+)
 
 
 def get_demo_model() -> Model:
@@ -35,7 +40,7 @@ def get_demo_model() -> Model:
     """
     return create_fallback_model(
         primary_model_name=settings.ai__demo_agent__model_name,
-        primary_provider=settings.ai__demo_agent__provider
+        primary_provider=settings.ai__demo_agent__provider,
     )
 
 
@@ -52,7 +57,7 @@ def get_default_model() -> Model:
     """
     return create_fallback_model(
         primary_model_name=settings.ai__default_model__name,
-        primary_provider=settings.ai__default_model__provider
+        primary_provider=settings.ai__default_model__provider,
     )
 
 
@@ -69,7 +74,7 @@ def get_fallback_model() -> Model:
     """
     return create_llm_model(
         model_name=settings.ai__fallback__model_name,
-        provider=settings.ai__fallback__provider
+        provider=settings.ai__fallback__provider,
     )
 
 
@@ -81,9 +86,9 @@ def list_available_models() -> Dict[str, Callable[[], Model]]:
         Dictionary of model names and their getter functions
     """
     return {
-        'demo': get_demo_model,
-        'default': get_default_model,
-        'fallback': get_fallback_model,
+        "demo": get_demo_model,
+        "default": get_default_model,
+        "fallback": get_fallback_model,
     }
 
 

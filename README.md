@@ -123,11 +123,11 @@ See `env.sample` for all available configuration options.
 1. **Define your agent** in `agents/your_agent.py`:
 ```python
 from pydantic_ai import Agent
-from agent_project_template.core.llm_registry import get_gpt41_mini
+from agent_project_template.core.llm_registry import get_default_model
 
 # Create your agent
 your_agent = Agent(
-    model=get_gpt41_mini(),
+    model=get_default_model(),
     system_prompt="You are a helpful assistant..."
 )
 

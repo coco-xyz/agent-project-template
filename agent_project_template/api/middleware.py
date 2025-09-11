@@ -7,8 +7,10 @@ Simple middleware for request logging.
 import time
 import uuid
 from typing import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,19 +20,19 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
     Simple middleware to log API requests and responses.
     """
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process request and log basic information.
-        
+
         Args:
             request: FastAPI request object
             call_next: Next middleware/handler in chain
-            
+
         Returns:
             Response: HTTP response
         """
-        
+
         start_time = time.time()
         method = request.method
         path = request.url.path
@@ -39,25 +41,53 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request start (debug level)
         logger.debug("Request: %s %s from %s [%s]", method, path, client_ip, request_id)
-        
+
         try:
             response = await call_next(request)
             duration = time.time() - start_time
-            
+
             # Log request completion
             if response.status_code >= 500:
-                logger.error("%s %s - %d (%.3fs) [%s]", method, path, response.status_code, duration, request_id)
+                logger.error(
+                    "%s %s - %d (%.3fs) [%s]",
+                    method,
+                    path,
+                    response.status_code,
+                    duration,
+                    request_id,
+                )
             elif response.status_code >= 400:
-                logger.warning("%s %s - %d (%.3fs) [%s]", method, path, response.status_code, duration, request_id)
+                logger.warning(
+                    "%s %s - %d (%.3fs) [%s]",
+                    method,
+                    path,
+                    response.status_code,
+                    duration,
+                    request_id,
+                )
             else:
-                logger.info("%s %s - %d (%.3fs) [%s]", method, path, response.status_code, duration, request_id)
-            
+                logger.info(
+                    "%s %s - %d (%.3fs) [%s]",
+                    method,
+                    path,
+                    response.status_code,
+                    duration,
+                    request_id,
+                )
+
             return response
-            
+
         except Exception as e:
             duration = time.time() - start_time
-            logger.error("Request failed: %s %s - %s (%.3fs) [%s]",
-                        method, path, str(e), duration, request_id, exc_info=True)
+            logger.error(
+                "Request failed: %s %s - %s (%.3fs) [%s]",
+                method,
+                path,
+                str(e),
+                duration,
+                request_id,
+                exc_info=True,
+            )
             raise
 
 

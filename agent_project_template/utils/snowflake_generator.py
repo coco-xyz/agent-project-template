@@ -7,10 +7,12 @@ Implements singleton pattern for consistent machine ID across the application.
 
 import threading
 from typing import Optional
+
 from sonyflake import SonyFlake
-from agent_project_template.core.logger import get_logger
-from agent_project_template.core.exceptions import InternalServiceException
+
 from agent_project_template.core.error_codes import InternalServiceErrorCode
+from agent_project_template.core.exceptions import InternalServiceException
+from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -27,10 +29,10 @@ class SnowflakeGenerator:
     This ensures distributed uniqueness and time-based ordering.
     """
 
-    _instance: Optional['SnowflakeGenerator'] = None
+    _instance: Optional["SnowflakeGenerator"] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> 'SnowflakeGenerator':
+    def __new__(cls) -> "SnowflakeGenerator":
         """Singleton pattern implementation with thread safety."""
         if cls._instance is None:
             with cls._lock:
@@ -41,7 +43,7 @@ class SnowflakeGenerator:
 
     def __init__(self):
         """Initialize the SonyFlake generator (called only once due to singleton)."""
-        if getattr(self, '_initialized', False):
+        if getattr(self, "_initialized", False):
             return
 
         try:
@@ -54,7 +56,7 @@ class SnowflakeGenerator:
             logger.error("Failed to initialize SnowflakeGenerator: %s", str(e))
             raise InternalServiceException(
                 InternalServiceErrorCode.SNOWFLAKE_GENERATION_FAILED,
-                f"SnowflakeGenerator initialization failed: {str(e)}"
+                f"SnowflakeGenerator initialization failed: {str(e)}",
             ) from e
 
     def generate_id(self) -> int:
@@ -73,7 +75,7 @@ class SnowflakeGenerator:
             logger.error("Failed to generate snowflake ID: %s", str(e))
             raise InternalServiceException(
                 InternalServiceErrorCode.SNOWFLAKE_GENERATION_FAILED,
-                f"Snowflake ID generation failed: {str(e)}"
+                f"Snowflake ID generation failed: {str(e)}",
             ) from e
 
     def generate_id_str(self) -> str:

@@ -13,18 +13,23 @@ Features:
 """
 
 from contextlib import contextmanager
-from typing import Generator, Dict, Any
 from dataclasses import dataclass
+from typing import Any, Dict, Generator
 
-from sqlalchemy import create_engine, text, Engine
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
-from sqlalchemy.exc import OperationalError, SQLAlchemyError, DatabaseError, InterfaceError
+from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.exc import (
+    DatabaseError,
+    InterfaceError,
+    OperationalError,
+    SQLAlchemyError,
+)
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 # Fast-failing imports from core
 from agent_project_template.core.config import settings
-from agent_project_template.core.exceptions import DatabaseException
 from agent_project_template.core.error_codes import DatabaseErrorCode
+from agent_project_template.core.exceptions import DatabaseException
 from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -33,6 +38,7 @@ logger = get_logger(__name__)
 @dataclass(frozen=True)
 class PoolStatus:
     """Immutable connection pool status information."""
+
     size: int
     checked_out: int
     overflow: int
@@ -41,8 +47,6 @@ class PoolStatus:
 
 # Global SQLAlchemy base
 Base = declarative_base()
-
-
 
 
 def _create_database_engine() -> Engine:
@@ -67,15 +71,15 @@ def _create_database_engine() -> Engine:
 
         # Extract host from database URL for error details
         database_url = str(settings.database__url)
-        if '@' in database_url:
-            host = database_url.rsplit('@', maxsplit=1)[-1].split('/')[0]
+        if "@" in database_url:
+            host = database_url.rsplit("@", maxsplit=1)[-1].split("/")[0]
         else:
             host = "unknown"
 
         raise DatabaseException(
             DatabaseErrorCode.CONNECTION_FAILED,
             f"Database engine creation failed: {str(e)}",
-            details={"database_url_host": host}
+            details={"database_url_host": host},
         ) from e
 
 
@@ -89,7 +93,7 @@ SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     future=True,
-    expire_on_commit=True  # Safe default, prevents stale data issues
+    expire_on_commit=True,  # Safe default, prevents stale data issues
 )
 
 
@@ -109,15 +113,14 @@ def get_pool_status() -> PoolStatus:
             size=pool.size(),
             checked_out=pool.checkedout(),
             overflow=pool.overflow(),
-            invalid=pool.invalid()
+            invalid=pool.invalid(),
         )
     except Exception as e:
         logger.error("Failed to get pool status: %s", str(e))
         raise DatabaseException(
             DatabaseErrorCode.CONNECTION_FAILED,
-            f"Pool status retrieval failed: {str(e)}"
+            f"Pool status retrieval failed: {str(e)}",
         ) from e
-
 
 
 def _create_db_session() -> Generator[Session, None, None]:
@@ -148,8 +151,7 @@ def _create_db_session() -> Generator[Session, None, None]:
             except Exception as rollback_error:
                 logger.error("Failed to rollback session: %s", str(rollback_error))
         raise DatabaseException(
-            DatabaseErrorCode.QUERY_FAILED,
-            f"Database session error: {str(e)}"
+            DatabaseErrorCode.QUERY_FAILED, f"Database session error: {str(e)}"
         ) from e
 
     except Exception as e:
@@ -160,8 +162,7 @@ def _create_db_session() -> Generator[Session, None, None]:
             except Exception:
                 pass
         raise DatabaseException(
-            DatabaseErrorCode.CONNECTION_FAILED,
-            f"Unexpected database error: {str(e)}"
+            DatabaseErrorCode.CONNECTION_FAILED, f"Unexpected database error: {str(e)}"
         ) from e
 
     finally:
@@ -234,9 +235,6 @@ def database_session() -> Generator[Session, None, None]:
     yield from _create_db_session()
 
 
-
-
-
 @contextmanager
 def transaction_manager(db_session: Session) -> Generator[Session, None, None]:
     """
@@ -276,8 +274,7 @@ def transaction_manager(db_session: Session) -> Generator[Session, None, None]:
     """
     if db_session is None:
         raise DatabaseException(
-            DatabaseErrorCode.CONNECTION_FAILED,
-            "Database session is None"
+            DatabaseErrorCode.CONNECTION_FAILED, "Database session is None"
         )
 
     logger.debug("Starting database transaction")
@@ -296,13 +293,14 @@ def transaction_manager(db_session: Session) -> Generator[Session, None, None]:
             logger.error("Failed to rollback transaction: %s", str(rollback_error))
 
         # 根据异常类型选择错误码
-        error_code = (DatabaseErrorCode.QUERY_FAILED
-                     if isinstance(e, SQLAlchemyError)
-                     else DatabaseErrorCode.TRANSACTION_FAILED)
+        error_code = (
+            DatabaseErrorCode.QUERY_FAILED
+            if isinstance(e, SQLAlchemyError)
+            else DatabaseErrorCode.TRANSACTION_FAILED
+        )
 
         raise DatabaseException(
-            error_code,
-            f"Database transaction failed: {str(e)}"
+            error_code, f"Database transaction failed: {str(e)}"
         ) from e
 
 
@@ -353,13 +351,17 @@ def test_connection() -> Dict[str, Any]:
         logger.info(
             "Database connection test - Pool status: Size=%d, Checked out=%d, "
             "Overflow=%d, Invalid=%d",
-            pool_status.size, pool_status.checked_out,
-            pool_status.overflow, pool_status.invalid
+            pool_status.size,
+            pool_status.checked_out,
+            pool_status.overflow,
+            pool_status.invalid,
         )
 
         # 安全地渲染 URL
         try:
-            safe_url = engine.url.set(password="***").render_as_string(hide_password=False)
+            safe_url = engine.url.set(password="***").render_as_string(
+                hide_password=False
+            )
         except Exception:
             # 如果 URL 渲染失败，使用简化版本
             safe_url = (
@@ -374,9 +376,9 @@ def test_connection() -> Dict[str, Any]:
                 "size": pool_status.size,
                 "checked_out": pool_status.checked_out,
                 "overflow": pool_status.overflow,
-                "invalid": pool_status.invalid  # 添加缺失的字段
+                "invalid": pool_status.invalid,  # 添加缺失的字段
             },
-            "engine_url": safe_url
+            "engine_url": safe_url,
         }
 
         logger.info("Database connection test successful")
@@ -388,7 +390,7 @@ def test_connection() -> Dict[str, Any]:
         raise DatabaseException(
             DatabaseErrorCode.CONNECTION_FAILED,
             f"Database connection test failed: {str(e)}",
-            details={"error_type": type(e).__name__}
+            details={"error_type": type(e).__name__},
         ) from e
 
     except Exception as e:
@@ -396,5 +398,5 @@ def test_connection() -> Dict[str, Any]:
         raise DatabaseException(
             DatabaseErrorCode.CONNECTION_FAILED,
             f"Database connection test failed: {str(e)}",
-            details={"error_type": type(e).__name__}
+            details={"error_type": type(e).__name__},
         ) from e

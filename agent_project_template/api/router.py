@@ -5,6 +5,7 @@ This module defines the main FastAPI router, including the version 1 router.
 """
 
 from fastapi import APIRouter
+
 from agent_project_template.api.v1 import router as v1_router
 
 router = APIRouter()

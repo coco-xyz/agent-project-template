@@ -30,10 +30,15 @@ async def run_cli_mode():
     # Initialize Logfire for CLI mode (without FastAPI app)
     try:
         from agent_project_template.core.logfire_config import initialize_logfire
+
         results = initialize_logfire(app=None)
         if results["configured"]:
             instrumentation = results["instrumentation"]
-            enabled_instruments = [name for name, enabled in instrumentation.items() if enabled and name != "fastapi"]
+            enabled_instruments = [
+                name
+                for name, enabled in instrumentation.items()
+                if enabled and name != "fastapi"
+            ]
             if enabled_instruments:
                 print(f"🔍 Monitoring enabled for: {', '.join(enabled_instruments)}")
     except ImportError:
@@ -53,10 +58,10 @@ async def run_cli_mode():
         try:
             user_input = input("🤖 > ").strip()
 
-            if user_input.lower() in ['exit', 'quit']:
+            if user_input.lower() in ["exit", "quit"]:
                 print("👋 Goodbye!")
                 break
-            elif user_input.lower() == 'help':
+            elif user_input.lower() == "help":
                 print("\nAvailable commands:")
                 print("  - help: Show this help message")
                 print("  - exit/quit: Exit the application")
@@ -64,8 +69,12 @@ async def run_cli_mode():
                 print()
             elif user_input:
                 # Demo response - replace this with your actual agent logic
-                print(f"🤖 Demo Agent: You said '{user_input}'. This is where your agent logic would go!")
-                print("   💡 Tip: Implement your agent in agent_project_template/agents/")
+                print(
+                    f"🤖 Demo Agent: You said '{user_input}'. This is where your agent logic would go!"
+                )
+                print(
+                    "   💡 Tip: Implement your agent in agent_project_template/agents/"
+                )
                 print()
             else:
                 print("Please enter a command or message.")
@@ -106,7 +115,7 @@ def create_app():
                 version=settings.api__version,
                 docs_url=settings.api__docs_url,
                 redoc_url=settings.api__redoc_url,
-                mount_prefix=""  # Mount at root level
+                mount_prefix="",  # Mount at root level
             )
         else:
             # Fallback configuration
@@ -116,7 +125,7 @@ def create_app():
                 version="1.0.0",
                 docs_url="/docs",
                 redoc_url="/redoc",
-                mount_prefix=""
+                mount_prefix="",
             )
 
     except ImportError as e:
@@ -126,7 +135,7 @@ def create_app():
         app = FastAPI(
             title="Agent Project Template",
             description="AI Agent Application Template (Minimal Mode)",
-            version="1.0.0"
+            version="1.0.0",
         )
 
         @app.get("/")
@@ -134,7 +143,7 @@ def create_app():
             return {
                 "message": "Agent Project Template API",
                 "status": "running",
-                "note": "Running in minimal mode due to missing components"
+                "note": "Running in minimal mode due to missing components",
             }
 
         return app
@@ -152,33 +161,33 @@ Examples:
   python main.py --mode cli          # Run in CLI mode (default)
   python main.py --mode api          # Run as FastAPI server
   python main.py --mode api --host 127.0.0.1 --port 3000  # Custom host/port
-        """
+        """,
     )
 
     parser.add_argument(
         "--mode",
         choices=["cli", "api"],
         default="cli",
-        help="Run mode: 'cli' for command-line interface, 'api' for FastAPI server (default: cli)"
+        help="Run mode: 'cli' for command-line interface, 'api' for FastAPI server (default: cli)",
     )
 
     parser.add_argument(
         "--host",
         default=os.getenv("HOST", "0.0.0.0"),
-        help="Host to bind the API server (default: 0.0.0.0)"
+        help="Host to bind the API server (default: 0.0.0.0)",
     )
 
     parser.add_argument(
         "--port",
         type=int,
         default=int(os.getenv("PORT", "8080")),
-        help="Port to bind the API server (default: 8080)"
+        help="Port to bind the API server (default: 8080)",
     )
 
     parser.add_argument(
         "--reload",
         action="store_true",
-        help="Enable auto-reload for development (API mode only)"
+        help="Enable auto-reload for development (API mode only)",
     )
 
     args = parser.parse_args()
@@ -196,7 +205,9 @@ Examples:
     elif args.mode == "api":
         # Run in API mode
         if settings is None:
-            print("⚠️  Configuration not fully loaded, but starting API server with defaults...")
+            print(
+                "⚠️  Configuration not fully loaded, but starting API server with defaults..."
+            )
 
         print("🚀 Starting Agent Project Template API Server...")
         print(f"📍 Server will run on {args.host}:{args.port}")
@@ -204,7 +215,9 @@ Examples:
         if settings:
             print(f"🌍 Environment: {settings.environment}")
             print(f"🐛 Debug mode: {settings.debug}")
-            print(f"📚 API docs: http://{args.host}:{args.port}{settings.api__docs_url}")
+            print(
+                f"📚 API docs: http://{args.host}:{args.port}{settings.api__docs_url}"
+            )
             print(f"📖 ReDoc: http://{args.host}:{args.port}{settings.api__redoc_url}")
         else:
             print("🌍 Environment: development (fallback)")
@@ -223,12 +236,11 @@ Examples:
                 host=args.host,
                 port=args.port,
                 reload=args.reload or (settings.debug if settings else True),
-                log_level=settings.log_level.lower() if settings else "info"
+                log_level=settings.log_level.lower() if settings else "info",
             )
         except Exception as e:
             print(f"❌ Error starting API server: {e}")
             sys.exit(1)
-
 
 
 if __name__ == "__main__":

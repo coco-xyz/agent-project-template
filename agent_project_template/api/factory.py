@@ -3,16 +3,20 @@ API Factory
 
 Centralized API setup with middleware, CORS, and monitoring configuration.
 """
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from agent_project_template.api.errors import register_exception_handlers
+from agent_project_template.api.middleware import (
+    RequestIDMiddleware,
+    RequestLoggingMiddleware,
+)
+from agent_project_template.api.router import router
 from agent_project_template.core.config import settings
 from agent_project_template.core.logger import get_logger
-from agent_project_template.api.middleware import RequestLoggingMiddleware, RequestIDMiddleware
-from agent_project_template.api.errors import register_exception_handlers
-from agent_project_template.api.router import router
 
 logger = get_logger(__name__)
 
@@ -56,12 +60,9 @@ def setup_security_middleware(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     # Trusted hosts (production safety)
-    trusted_hosts = getattr(settings, 'trusted_hosts', None)
+    trusted_hosts = getattr(settings, "trusted_hosts", None)
     if trusted_hosts and not settings.debug:
-        app.add_middleware(
-            TrustedHostMiddleware,
-            allowed_hosts=trusted_hosts
-        )
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
         logger.info("TrustedHost middleware configured with hosts: %s", trusted_hosts)
 
 
@@ -73,10 +74,7 @@ def setup_compression(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     # Enable GZip compression for responses > 1KB
-    app.add_middleware(
-        GZipMiddleware,
-        minimum_size=1000
-    )
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     logger.info("GZip compression middleware configured")
 
 
@@ -124,9 +122,14 @@ def setup_logfire_instrumentation(app: FastAPI) -> None:
 
             # Log instrumentation results
             instrumentation = results["instrumentation"]
-            enabled_instruments = [name for name, enabled in instrumentation.items() if enabled]
+            enabled_instruments = [
+                name for name, enabled in instrumentation.items() if enabled
+            ]
             if enabled_instruments:
-                logger.info("Logfire instrumentation enabled for: %s", ", ".join(enabled_instruments))
+                logger.info(
+                    "Logfire instrumentation enabled for: %s",
+                    ", ".join(enabled_instruments),
+                )
             else:
                 logger.debug("No Logfire instrumentation enabled")
         else:
@@ -183,7 +186,7 @@ def create_api(
     enable_compression: bool = True,
     enable_security: bool = True,
     enable_metrics: bool = True,
-    mount_prefix: str = "/api"
+    mount_prefix: str = "/api",
 ) -> FastAPI:
     """
     Create and configure FastAPI application with all middleware.
@@ -209,7 +212,7 @@ def create_api(
         version=version,
         docs_url=docs_url,
         redoc_url=redoc_url,
-        debug=settings.debug
+        debug=settings.debug,
     )
 
     # Setup middleware in reverse order (last added = first executed)
@@ -248,7 +251,7 @@ def mount_api(
     enable_cors: bool = True,
     enable_compression: bool = True,
     enable_security: bool = True,
-    enable_metrics: bool = True
+    enable_metrics: bool = True,
 ) -> None:
     """
     Mount API components to an existing FastAPI app.

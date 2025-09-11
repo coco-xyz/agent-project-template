@@ -8,15 +8,16 @@ resume data modification.
 
 import asyncio
 import time
-from typing import Optional
 from contextlib import asynccontextmanager
+from typing import Optional
+
+from agent_project_template.core.config import settings
+from agent_project_template.core.error_codes import RedisErrorCode
+from agent_project_template.core.exceptions import RedisException
+from agent_project_template.core.logger import get_logger
 
 # Fast-failing imports from core and stores
 from agent_project_template.stores.redis_client import get_redis_client
-from agent_project_template.core.exceptions import RedisException
-from agent_project_template.core.error_codes import RedisErrorCode
-from agent_project_template.core.config import settings
-from agent_project_template.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -68,14 +69,13 @@ class SessionLock:
             # Try to acquire lock with retries
             while (time.monotonic() - start_time) < wait_timeout:
                 self._identifier = await self._redis_client.acquire_lock(
-                    self.lock_key,
-                    self.timeout
+                    self.lock_key, self.timeout
                 )
 
                 if self._identifier:
                     logger.info(
                         "Session lock acquired successfully for session: %s",
-                        self.session_id
+                        self.session_id,
                     )
                     return True
 
@@ -92,12 +92,12 @@ class SessionLock:
             logger.error(
                 "Error acquiring session lock for session: %s, error: %s",
                 self.session_id,
-                str(e)
+                str(e),
             )
             raise RedisException(
-                RedisErrorCode.LOCK_FAILED,
-                f"Failed to acquire session lock: {str(e)}"
+                RedisErrorCode.LOCK_FAILED, f"Failed to acquire session lock: {str(e)}"
             ) from e
+
     async def release(self) -> bool:
         """
         Release distributed lock for the session.
@@ -111,24 +111,22 @@ class SessionLock:
         if not self._identifier:
             logger.warning(
                 "Attempting to release lock without identifier for session: %s",
-                self.session_id
+                self.session_id,
             )
             return False
         try:
             success = await self._redis_client.release_lock(
-                self.lock_key,
-                self._identifier
+                self.lock_key, self._identifier
             )
 
             if success:
                 logger.info(
                     "Session lock released successfully for session: %s",
-                    self.session_id
+                    self.session_id,
                 )
             else:
                 logger.warning(
-                    "Failed to release session lock for session: %s",
-                    self.session_id
+                    "Failed to release session lock for session: %s", self.session_id
                 )
 
             self._identifier = None
@@ -138,12 +136,12 @@ class SessionLock:
             logger.error(
                 "Error releasing session lock for session: %s, error: %s",
                 self.session_id,
-                str(e)
+                str(e),
             )
             raise RedisException(
-                RedisErrorCode.LOCK_FAILED,
-                f"Failed to release session lock: {str(e)}"
+                RedisErrorCode.LOCK_FAILED, f"Failed to release session lock: {str(e)}"
             ) from e
+
     @asynccontextmanager
     async def acquire_context(self, wait_timeout: int = 10):
         """
@@ -169,7 +167,7 @@ class SessionLock:
             raise RedisException(
                 RedisErrorCode.LOCK_FAILED,
                 f"Failed to acquire session lock for {self.session_id} "
-                f"within {wait_timeout} seconds"
+                f"within {wait_timeout} seconds",
             )
 
         try:
@@ -191,9 +189,7 @@ class SessionLock:
 # Convenience function for session lock context management
 @asynccontextmanager
 async def session_lock_context(
-    session_id: str,
-    timeout: int = 30,
-    wait_timeout: int = 10
+    session_id: str, timeout: int = 30, wait_timeout: int = 10
 ):
     """
     Convenient context manager for session-level distributed lock.

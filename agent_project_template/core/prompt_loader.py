@@ -8,14 +8,17 @@ The loader uses LRU caching (maxsize=128) to improve performance by avoiding
 repeated file I/O operations. Use clear_prompt_cache() to manually clear the
 cache when prompt files are updated during runtime.
 """
-from pathlib import Path
+
 from functools import lru_cache
-from agent_project_template.core.exceptions import InternalServiceException
+from pathlib import Path
+
 from agent_project_template.core.error_codes import InternalServiceErrorCode
+from agent_project_template.core.exceptions import InternalServiceException
 
 # Get the absolute path to the 'prompts' directory
 # This makes the loader independent of where the script is run
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
 
 @lru_cache(maxsize=128)
 def load_prompt(prompt_name: str) -> str:
@@ -40,7 +43,7 @@ def load_prompt(prompt_name: str) -> str:
         raise InternalServiceException(
             "Invalid prompt path outside prompts directory",
             InternalServiceErrorCode.OPERATION_FAILED,
-            {"prompt_name": prompt_name}
+            {"prompt_name": prompt_name},
         )
 
     try:
@@ -49,7 +52,7 @@ def load_prompt(prompt_name: str) -> str:
         raise InternalServiceException(
             f"Prompt file not found at: {target_path}",
             InternalServiceErrorCode.OPERATION_FAILED,
-            {"prompt_name": prompt_name, "file_path": str(target_path)}
+            {"prompt_name": prompt_name, "file_path": str(target_path)},
         ) from exc
     except Exception as e:
         raise InternalServiceException.wrap(
@@ -57,7 +60,7 @@ def load_prompt(prompt_name: str) -> str:
             f"Failed to load prompt file {prompt_name}",
             InternalServiceErrorCode.OPERATION_FAILED,
             prompt_name=prompt_name,
-            file_path=str(target_path)
+            file_path=str(target_path),
         )
 
 

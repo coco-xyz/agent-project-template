@@ -3,15 +3,17 @@ Exception Handlers
 
 Dedicated module for FastAPI-bound exception handling.
 """
-import traceback
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 
+import traceback
+
+from fastapi import HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from agent_project_template.api.schemas.error import ErrorDetail, ErrorResponse
+from agent_project_template.core.error_codes import APIErrorCode, ValidationErrorCode
 from agent_project_template.core.exceptions import ApplicationException
-from agent_project_template.core.error_codes import ValidationErrorCode, APIErrorCode
 from agent_project_template.core.logger import get_logger
-from agent_project_template.api.schemas.error import ErrorResponse, ErrorDetail
 
 logger = get_logger(__name__)
 
@@ -29,7 +31,9 @@ def _log_exception(request: Request, exc: Exception, status_code: int) -> None:
         logger.info(msg, *args)
 
 
-def _build_response(error: ErrorDetail, request: Request, status_code: int) -> JSONResponse:
+def _build_response(
+    error: ErrorDetail, request: Request, status_code: int
+) -> JSONResponse:
     """Build standardized error response."""
     request_id = getattr(request.state, "request_id", None)
 
@@ -46,20 +50,18 @@ def _build_response(error: ErrorDetail, request: Request, status_code: int) -> J
         headers["X-Request-ID"] = request_id
 
     return JSONResponse(
-        status_code=status_code,
-        content=payload.model_dump(),
-        headers=headers
+        status_code=status_code, content=payload.model_dump(), headers=headers
     )
 
 
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Global exception handler for all unhandled exceptions.
-    
+
     Args:
         request: FastAPI request object
         exc: Exception that was raised
-        
+
     Returns:
         JSONResponse with standardized error format
     """
@@ -112,6 +114,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     # In debug mode, include more details
     try:
         from agent_project_template.core.config import settings
+
         if settings and settings.debug:
             error.debug = {
                 "exception_type": exc.__class__.__name__,

@@ -1,8 +1,10 @@
 """
 V1 API Response Schemas
 
-Only demo-related response schemas for the template.
+Response schemas for the API template.
 """
-from .demo_response import DemoChatResponse, DemoHealthResponse
 
-__all__ = ["DemoChatResponse", "DemoHealthResponse"]
+from .demo_response import DemoChatResponse
+from .health_response import HealthResponse
+
+__all__ = ["DemoChatResponse", "HealthResponse"]

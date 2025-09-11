@@ -6,6 +6,7 @@ A simple demonstration agent for the Agent Project Template.
 
 from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
@@ -14,13 +15,14 @@ from agent_project_template.core.llm_registry import get_demo_model
 
 class DemoDeps(BaseModel):
     """Dependencies for the demo agent."""
+
     user_name: Optional[str] = None
 
 
 # Create the demo agent
 demo_agent = Agent[str](
     model=get_demo_model(),
-    system_prompt="You are a helpful AI assistant. Be friendly and concise."
+    system_prompt="You are a helpful AI assistant. Be friendly and concise.",
 )
 
 
