@@ -154,7 +154,7 @@ class Settings(BaseSettings):
         default=False, description="Enable Logfire monitoring"
     )
     logfire__service_name: str = Field(
-        default="agent-project-template", description="Logfire service name"
+        default="{{cookiecutter.project_slug}}", description="Logfire service name"
     )
     logfire__environment: str = Field(
         default="development", description="Logfire environment"

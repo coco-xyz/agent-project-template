@@ -191,7 +191,7 @@ ai__fallback__model_name: str = "gpt-4o-mini"
 
 # Monitoring
 logfire__enabled: bool = False
-logfire__service_name: str = "agent-project-template"
+logfire__service_name: str = "{{cookiecutter.project_slug}}"
 ```
 
 ## Error Handling and Monitoring

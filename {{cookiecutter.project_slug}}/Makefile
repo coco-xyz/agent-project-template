@@ -6,7 +6,7 @@
 # =============================================================================
 
 # Project settings
-PROJECT_NAME := agent-project-template
+PROJECT_NAME := {{cookiecutter.project_name}}
 PACKAGE_NAME := {{cookiecutter.project_slug}}
 
 # Docker settings
@@ -65,6 +65,18 @@ help: ## Show this help message
 # =============================================================================
 # Setup Commands
 # =============================================================================
+
+.PHONY: setup-deps
+setup-deps: ## setup - Install dependencies with uv
+	@echo "$(BLUE)Installing dependencies with uv...$(RESET)"
+	@if command -v uv >/dev/null 2>&1; then \
+		uv sync; \
+		echo "$(GREEN)✅ Dependencies installed$(RESET)"; \
+	else \
+		echo "$(RED)❌ uv not found$(RESET)"; \
+		echo "$(YELLOW)Please install uv first: https://docs.astral.sh/uv/getting-started/installation/$(RESET)"; \
+		exit 1; \
+	fi
 
 .PHONY: setup-env
 setup-env: ## setup - Create .env file from template
@@ -251,7 +263,7 @@ version: ## Show project version
 # =============================================================================
 
 .PHONY: setup
-setup: setup-env setup-dirs test-create ## Complete project setup
+setup: setup-deps setup-env setup-dirs test-create ## Complete project setup
 	@echo "$(GREEN)✅ Project setup complete!$(RESET)"
 	@echo "$(YELLOW)Next steps:$(RESET)"
 	@echo "  1. Edit .env file with your configuration"

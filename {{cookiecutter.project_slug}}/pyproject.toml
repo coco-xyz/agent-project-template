@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-project-template"
+name = "{{cookiecutter.project_slug}}"
 version = "1.0.0"
 description = "Production-ready template for building AI agent applications with pydantic-ai and FastAPI"
 readme = "README.md"
 requires-python = "==3.11.*"
 license = {text = "MIT"}
 authors = [
-    {name = "Agent Template Team", email = "team@agent-project-template.com"}
+    {name = "Agent Template Team", email = "team@example.com"}
 ]
 keywords = ["ai", "agent", "template", "pydantic-ai", "fastapi", "llm", "chatbot"]
 classifiers = [
@@ -25,7 +25,7 @@ classifiers = [
 
 dependencies = [
     # Core AI framework
-    "pydantic-ai[logfire]==0.8.1",
+    "pydantic-ai[logfire]==1.0.3",
     "logfire[fastapi,httpx,redis]>=3.23.0",
     # Web framework (optional)
     "fastapi==0.115.12",
@@ -59,13 +59,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/agent-project-template"
-Repository = "https://github.com/your-org/agent-project-template"
-Documentation = "https://agent-project-template.readthedocs.io"
-Issues = "https://github.com/your-org/agent-project-template/issues"
+Homepage = "https://github.com/your-org/{{cookiecutter.project_slug}}"
+Repository = "https://github.com/your-org/{{cookiecutter.project_slug}}"
+Documentation = "https://{{cookiecutter.project_slug}}.readthedocs.io"
+Issues = "https://github.com/your-org/{{cookiecutter.project_slug}}/issues"
 
 [project.scripts]
-agent-project-template = "main:main"
+{{cookiecutter.project_slug}} = "main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["{{cookiecutter.project_slug}}"]

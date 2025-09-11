@@ -35,7 +35,7 @@ A powerful AI agent system built with pydantic-ai and FastAPI, providing intelli
 0. Clone the repository:
 ```bash
 git clone <repo_url>
-cd agent-project-template
+cd {{cookiecutter.project_slug}}
 ```
 
 1. Install uv if not installed:
