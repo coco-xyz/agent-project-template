@@ -3,7 +3,7 @@
 # ================================
 # Builder Stage
 # ================================
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Build argument to control dev dependencies installation
 ARG INSTALL_DEV=false
@@ -90,7 +90,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 # Copy application source code with proper ownership
-COPY --chown=appuser:appuser {{cookiecutter.project_slug}}/ ./{{cookiecutter.project_slug}}/
+COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser main.py ./
 
 # Copy init scripts (optional directory)
