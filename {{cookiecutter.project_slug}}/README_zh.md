@@ -98,8 +98,58 @@ make config-check
 - 架构与约定：`docs/ARCHITECTURE.md`
 - 更多文档请查看 `docs/` 目录（可根据项目需要补充特定指南）
 
-## Docker 快速使用（可选）
+## Docker 使用
 
+### 开发环境（推荐）
+仅启动中间件服务（PostgreSQL、Redis），在本地运行应用程序：
+```bash
+# 启动开发环境
+make dev-start
+
+# 在本地运行应用程序
+make run-api
+# 或者
+make run-cli
+
+# 停止开发环境
+make dev-stop
+```
+
+### 生产环境模式
+启动完整的应用程序栈，包括容器化的应用程序：
+```bash
+# 启动完整栈
+make prod-start
+
+# 停止完整栈
+make prod-stop
+```
+
+### 单独的 Docker Compose 命令
+```bash
+# 启动/停止仅中间件（postgres、redis）
+make compose-up-middleware
+make compose-down-middleware
+
+# 启动/停止完整应用程序栈
+make compose-up
+make compose-down
+
+# 查看日志
+make compose-logs
+make compose-logs-middleware
+
+# 检查服务状态
+make compose-ps
+
+# 构建应用程序镜像
+make compose-build
+
+# 清理所有资源
+make compose-clean
+```
+
+### 传统 Docker 命令
 ```bash
 make docker-build
 make docker-run

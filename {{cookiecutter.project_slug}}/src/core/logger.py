@@ -28,7 +28,7 @@ def _get_logfire_module() -> Any:
         import logfire as _lf
 
         return _lf
-    except Exception:
+    except ImportError:
         return None
 
 
@@ -46,7 +46,7 @@ def _sanitize_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
                 safe[k] = v
             else:
                 safe[k] = repr(v)
-        except Exception:
+        except (TypeError, ValueError, AttributeError):
             safe[k] = "<unserializable>"
     return safe
 
@@ -72,11 +72,11 @@ def clear_session_id() -> None:
 
 def get_logfire_with_session() -> Any:
     """
-    Get a logfire instance with session ID as tag if available.
+    Get logfire module with session ID as tag if available.
 
     Returns:
-        Logfire instance with session tag if session exists,
-        default logfire instance if no session,
+        Logfire module with session tag if session exists,
+        logfire module itself if no session,
         or None if logfire not available
     """
     try:
@@ -88,7 +88,7 @@ def get_logfire_with_session() -> Any:
         if session_id:
             return logfire.with_tags(f"sid:{session_id}")
         return logfire
-    except Exception:
+    except (AttributeError, TypeError):
         return None
 
 
@@ -108,33 +108,41 @@ class SessionAwareLogfireHandler(logging.Handler):
         self.logfire_instance = logfire_instance
 
     def emit(self, record: logging.LogRecord) -> None:
-        """Send the log to Logfire with session tag if available."""
-        try:
-            # Prefer cached instance if provided
-            logfire = self.logfire_instance or _get_logfire_module()
-            if logfire is None:
-                self.fallback.handle(record)
-                return
-
-            # Check if instrumentation is suppressed (best-effort)
-            try:
-                from opentelemetry.context import get_current
-                from opentelemetry.instrumentation.utils import (
-                    _SUPPRESS_INSTRUMENTATION_KEY,
-                )
-
-                if get_current().get(_SUPPRESS_INSTRUMENTATION_KEY):
-                    self.fallback.handle(record)
-                    return
-            except Exception:
-                # If OpenTelemetry is not available or fails, continue with logging
-                pass
-
-        except ImportError:
-            self.fallback.handle(record)
+        """
+        Try to send the log to Logfire with session tag if available,
+        otherwise use fallback handler.
+        """
+        # Get logfire instance
+        logfire = self.logfire_instance or _get_logfire_module()
+        if logfire is None:
+            self.fallback.emit(record)
             return
-        except Exception:
-            # If we can't check suppression, continue with logging
+
+        # Check if instrumentation is suppressed (best-effort)
+        try:
+            from opentelemetry.context import get_current
+            from opentelemetry.instrumentation.utils import (
+                _SUPPRESS_INSTRUMENTATION_KEY,
+            )
+
+            ctx = get_current()
+            # Try different Context API methods for version compatibility
+            try:
+                # Modern OTel versions use .get() method
+                if ctx.get(_SUPPRESS_INSTRUMENTATION_KEY, False):
+                    self.fallback.emit(record)
+                    return
+            except AttributeError:
+                try:
+                    # Older OTel versions use .get_value() method
+                    if ctx.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+                        self.fallback.emit(record)
+                        return
+                except (AttributeError, TypeError, KeyError):
+                    # If both methods fail, continue with logging
+                    pass
+        except ImportError:
+            # OpenTelemetry not available, continue with logging
             pass
 
         try:
@@ -186,7 +194,7 @@ class SessionAwareLogfireHandler(logging.Handler):
             # Format the message
             try:
                 msg = record.getMessage()
-            except Exception:
+            except (TypeError, ValueError, AttributeError):
                 msg = str(record.msg)
 
             # Send to logfire
@@ -197,17 +205,18 @@ class SessionAwareLogfireHandler(logging.Handler):
                 exc_info=record.exc_info,
             )
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             # Fallback to standard handler if logfire fails
-            self.fallback.handle(record)
+            self.fallback.emit(record)
 
 
 def get_logging_config() -> Dict[str, Any]:
     """
-    Generate logging configuration with Logfire integration.
+    Generate base logging configuration (console + file).
+    Logfire handler must be added separately via setup_logfire_handler().
 
     Returns:
-        Dict: Complete logging configuration dictionary
+        Dict: Base logging configuration dictionary
     """
 
     # Determine log level
@@ -241,11 +250,8 @@ def get_logging_config() -> Dict[str, Any]:
         },
     }
 
-    # Configure Logfire handler if enabled (added later via setup_logfire_handler)
-    if _get_setting("logfire__enabled", False):
-        pass
-
     # Base configuration
+    # Note: Logfire handler is added separately via setup_logfire_handler()
     config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -255,7 +261,10 @@ def get_logging_config() -> Dict[str, Any]:
                 "datefmt": "%H:%M:%S",
             },
             "detailed": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s",
+                "format": (
+                    "%(asctime)s - %(name)s - %(levelname)s - "
+                    "%(module)s:%(lineno)d - %(message)s"
+                ),
                 "datefmt": "%Y-%m-%d %H:%M:%S",
             },
         },
@@ -281,10 +290,20 @@ def get_logging_config() -> Dict[str, Any]:
 def setup_logfire_handler() -> None:
     """
     Set up Logfire handler after logfire.configure() has been called.
-    This should be called from main.py after Logfire is configured.
-    """
 
+    IMPORTANT: Must be called AFTER both:
+    1. logfire.configure() - to initialize Logfire
+    2. logging.config.dictConfig() - to avoid handler being overwritten
+
+    This function is idempotent - safe to call multiple times.
+    """
     if not _get_setting("logfire__enabled", False):
+        return
+
+    agent_logger = logging.getLogger("{{cookiecutter.project_slug}}")
+
+    # Check if SessionAwareLogfireHandler already exists to avoid duplicates
+    if any(isinstance(h, SessionAwareLogfireHandler) for h in agent_logger.handlers):
         return
 
     try:
@@ -299,8 +318,7 @@ def setup_logfire_handler() -> None:
         )
 
         # Filter out urllib3 debug logs from fallback handler
-        urllib3_filter = logging.Filter("urllib3")
-        fallback_handler.addFilter(lambda record: not urllib3_filter.filter(record))
+        fallback_handler.addFilter(lambda record: not record.name.startswith("urllib3"))
 
         # Create our custom session-aware Logfire handler
         logfire_handler = SessionAwareLogfireHandler(
@@ -309,29 +327,27 @@ def setup_logfire_handler() -> None:
             logfire_instance=logfire,
         )
 
-        # Get {{cookiecutter.project_slug}} logger and add Logfire handler (avoid duplicates)
-        agent_logger = logging.getLogger("{{cookiecutter.project_slug}}")
-        if not any(
-            isinstance(h, SessionAwareLogfireHandler) for h in agent_logger.handlers
-        ):
-            agent_logger.addHandler(logfire_handler)
+        # Add Logfire handler to the agent logger
+        agent_logger.addHandler(logfire_handler)
 
         # Log successful Logfire integration
         logger = logging.getLogger("{{cookiecutter.project_slug}}.logfire")
         logger.info("Session-aware Logfire logging handler configured successfully")
 
     except ImportError:
-        logger = logging.getLogger("{{cookiecutter.project_slug}}.logfire")
-        logger.warning("Logfire not available, using standard logging only")
-    except Exception as e:
-        logger = logging.getLogger("{{cookiecutter.project_slug}}.logfire")
-        logger.error("Failed to configure Logfire handler: %s", str(e))
+        # Use print instead of logger since logging might not be fully configured
+        print("⚠️  Logfire not available, using standard logging only")
+    except (AttributeError, TypeError, ValueError) as e:
+        # Use print instead of logger since logging might not be fully configured
+        print(f"⚠️  Failed to configure Logfire handler: {e}")
+
 
 
 @lru_cache(maxsize=1)
 def setup_logging() -> None:
     """
-    Set up logging configuration for the entire application.
+    Set up base logging configuration (console + file handlers).
+    Logfire handler must be set up separately via setup_logfire_handler().
     This function should be called once during application startup.
     """
 
@@ -350,16 +366,17 @@ def setup_logging() -> None:
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Get a logger instance with the specified name.
+    Get a logger instance with automatic '{{cookiecutter.project_slug}}' prefix.
 
     Args:
-        name: Logger name, typically __name__ of the calling module
+        name: Logger name, typically __name__ of the calling module.
+              Will be prefixed with '{{cookiecutter.project_slug}}.' if not already present.
 
     Returns:
-        Logger: Configured logger instance
+        Logger: Configured logger instance with {{cookiecutter.project_slug}} prefix
 
     Example:
-        logger = get_logger(__name__)
+        logger = get_logger(__name__)  # Returns '{{cookiecutter.project_slug}}.module_name'
         logger.info("This is an info message")
     """
 
@@ -371,21 +388,3 @@ def get_logger(name: str) -> logging.Logger:
         name = f"{{cookiecutter.project_slug}}.{name}"
 
     return logging.getLogger(name)
-
-
-# Convenience function for backward compatibility
-def setup_logger(name: Optional[str] = None) -> logging.Logger:
-    """
-    Set up and configure a logger (backward compatibility).
-
-    Args:
-        name: Logger name (optional)
-
-    Returns:
-        Logger: Configured logger instance
-    """
-
-    if name is None:
-        name = "{{cookiecutter.project_slug}}.default"
-
-    return get_logger(name)

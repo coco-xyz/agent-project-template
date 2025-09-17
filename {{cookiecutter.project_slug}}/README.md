@@ -92,7 +92,58 @@ make config-check
 - Architecture & Conventions: `docs/ARCHITECTURE.md`
 - See `docs/` directory for more documentation (can be supplemented with project-specific guides)
 
-## Docker Quick Usage (Optional)
+## Docker Usage
+
+### Development Environment (Recommended)
+Start only the middleware services (PostgreSQL, Redis) and run your application locally:
+```bash
+# Start development environment
+make dev-start
+
+# Run your application locally
+make run-api
+# or
+make run-cli
+
+# Stop development environment
+make dev-stop
+```
+
+### Production-like Environment
+Start the complete application stack including the containerized application:
+```bash
+# Start full stack
+make prod-start
+
+# Stop full stack
+make prod-stop
+```
+
+### Individual Docker Compose Commands
+```bash
+# Start/stop middleware only (postgres, redis)
+make compose-up-middleware
+make compose-down-middleware
+
+# Start/stop full application stack
+make compose-up
+make compose-down
+
+# View logs
+make compose-logs
+make compose-logs-middleware
+
+# Check service status
+make compose-ps
+
+# Build application image
+make compose-build
+
+# Clean up all resources
+make compose-clean
+```
+
+### Traditional Docker Commands
 ```bash
 make docker-build
 make docker-run
