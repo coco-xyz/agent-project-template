@@ -73,18 +73,29 @@ make config-check
 ```
 {{cookiecutter.project_slug}}/
 ├── src/                     # Main source code directory
-│   ├── core/                # Core modules (config, logging, etc.)
+│   ├── core/                # Core modules (config, logging, LLM, etc.)
 │   ├── agents/              # AI Agent implementations
 │   ├── api/                 # FastAPI routes and endpoints
+│   │   ├── errors/          # Error handling
+│   │   ├── schemas/         # API schemas
+│   │   └── v1/              # API version 1 endpoints
 │   ├── models/              # Data models
+│   ├── services/            # Business logic services
+│   ├── stores/              # Database and cache stores
+│   ├── prompts/             # AI prompts and templates
 │   └── utils/               # Utility functions
 ├── tests/                   # Test files
 ├── docs/                    # Project documentation
 ├── logs/                    # Log files directory
+├── migrations/              # Database migrations
+├── initdb/                  # Database initialization scripts
 ├── main.py                  # Application entry point
 ├── pyproject.toml           # Project configuration and dependencies
 ├── uv.lock                  # uv lock file
 ├── env.sample               # Environment variables template
+├── docker-compose.yml       # Docker compose configuration
+├── docker-compose.middleware.yml  # Middleware services only
+├── Dockerfile               # Docker configuration
 └── Makefile                 # Development commands
 ```
 

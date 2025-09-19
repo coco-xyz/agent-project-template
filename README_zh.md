@@ -93,18 +93,28 @@ make run-api
 ```
 your-project-name/
 ├── src/                     # 主要源代码
-│   ├── core/                # 核心模块（配置、日志）
+│   ├── core/                # 核心模块（配置、日志、LLM 等）
 │   ├── agents/              # AI Agent 实现
 │   ├── api/                 # FastAPI 路由和端点
+│   │   ├── errors/          # 错误处理
+│   │   ├── schemas/         # API 模式定义
+│   │   └── v1/              # API 版本 1 端点
 │   ├── models/              # 数据模型
+│   ├── services/            # 业务逻辑服务
+│   ├── stores/              # 数据库和缓存存储
+│   ├── prompts/             # AI 提示词和模板
 │   └── utils/               # 工具函数
 ├── tests/                   # 测试文件
 ├── docs/                    # 文档
 ├── logs/                    # 日志文件（运行时创建）
+├── migrations/              # 数据库迁移
+├── initdb/                  # 数据库初始化脚本
 ├── main.py                  # 应用入口点
 ├── pyproject.toml           # 项目配置
 ├── uv.lock                  # 依赖锁定文件
 ├── env.sample               # 环境变量模板
+├── docker-compose.yml       # Docker compose 配置
+├── docker-compose.middleware.yml  # 仅中间件服务
 ├── Dockerfile               # Docker 配置
 ├── Makefile                 # 开发命令
 ├── README.md                # 英文文档

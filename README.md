@@ -93,18 +93,28 @@ After generation, your project will have this structure:
 ```
 your-project-name/
 ├── src/                     # Main source code
-│   ├── core/                # Core modules (config, logging)
+│   ├── core/                # Core modules (config, logging, LLM, etc.)
 │   ├── agents/              # AI Agent implementations
 │   ├── api/                 # FastAPI routes and endpoints
+│   │   ├── errors/          # Error handling
+│   │   ├── schemas/         # API schemas
+│   │   └── v1/              # API version 1 endpoints
 │   ├── models/              # Data models
+│   ├── services/            # Business logic services
+│   ├── stores/              # Database and cache stores
+│   ├── prompts/             # AI prompts and templates
 │   └── utils/               # Utility functions
 ├── tests/                   # Test files
 ├── docs/                    # Documentation
 ├── logs/                    # Log files (created at runtime)
+├── migrations/              # Database migrations
+├── initdb/                  # Database initialization scripts
 ├── main.py                  # Application entry point
 ├── pyproject.toml           # Project configuration
 ├── uv.lock                  # Dependency lock file
 ├── env.sample               # Environment variables template
+├── docker-compose.yml       # Docker compose configuration
+├── docker-compose.middleware.yml  # Middleware services only
 ├── Dockerfile               # Docker configuration
 ├── Makefile                 # Development commands
 ├── README.md                # English documentation
