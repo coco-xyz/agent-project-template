@@ -21,7 +21,7 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 
 @lru_cache(maxsize=128)
-def load_prompt(prompt_name: str) -> str:
+def load_prompt(prompt_name: str, **kwargs) -> str:
     """
     Load a prompt from the 'prompts' directory.
 
@@ -47,7 +47,13 @@ def load_prompt(prompt_name: str) -> str:
         )
 
     try:
-        return target_path.read_text(encoding="utf-8")
+        prompt_content = target_path.read_text(encoding="utf-8")
+        
+        # Replace placeholders with provided kwargs
+        for key, value in kwargs.items():
+            prompt_content = prompt_content.replace(f"{{{key}}}", str(value))
+        
+        return prompt_content
     except FileNotFoundError as exc:
         raise InternalServiceException(
             f"Prompt file not found at: {target_path}",
