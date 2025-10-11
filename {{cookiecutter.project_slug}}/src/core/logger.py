@@ -200,7 +200,7 @@ class SessionAwareLogfireHandler(logging.Handler):
             # Send to logfire
             # For messages coming from standard logging, we have already formatted messages
             # We need to escape braces to prevent Logfire from treating them as placeholders
-            escaped_msg = msg.replace("{", "{{").replace("}", "}}")
+            escaped_msg = msg.replace("{", chr(123) * 2).replace("}", chr(125) * 2)
             logfire_with_session.log(
                 level=record.levelname.lower(),
                 msg_template=escaped_msg,
