@@ -51,7 +51,8 @@ def load_prompt(prompt_name: str, **kwargs) -> str:
         
         # Replace placeholders with provided kwargs
         for key, value in kwargs.items():
-            prompt_content = prompt_content.replace(f"{{{key}}}", str(value))
+            placeholder = "{" + key + "}"
+            prompt_content = prompt_content.replace(placeholder, str(value))
         
         return prompt_content
     except FileNotFoundError as exc:
