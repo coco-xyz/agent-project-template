@@ -240,7 +240,7 @@ except Exception as e:
 
 #### Logfire Integration
 - **Automatic Instrumentation**: pydantic-ai, Redis, HTTPX, FastAPI
-- **Configurable Monitoring**: Toggle instrumentation per service
+- **Configurable Monitoring**: Toggle instrumentation per service; opt-in to access logs with `LOGFIRE__CAPTURE_ACCESS_LOGS=true`
 - **Performance Tracking**: Request timing and processing metrics
 - **Error Correlation**: Distributed tracing with request IDs
 

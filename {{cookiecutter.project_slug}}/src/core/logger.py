@@ -112,6 +112,13 @@ class SessionAwareLogfireHandler(logging.Handler):
         Try to send the log to Logfire with session tag if available,
         otherwise use fallback handler.
         """
+        # Skip access logs for Logfire if disabled via configuration
+        if (
+            not _get_setting("logfire__capture_access_logs", False)
+            and record.levelno < logging.WARNING
+        ):
+            return
+
         # Get logfire instance
         logfire = self.logfire_instance or _get_logfire_module()
         if logfire is None:

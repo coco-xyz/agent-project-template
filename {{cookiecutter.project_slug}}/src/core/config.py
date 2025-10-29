@@ -179,13 +179,17 @@ class Settings(BaseSettings):
         default=True, description="Enable Logfire pydantic-ai instrumentation"
     )
     logfire__instrument__redis: bool = Field(
-        default=True, description="Enable Logfire Redis instrumentation"
+        default=False, description="Enable Logfire Redis instrumentation"
     )
     logfire__instrument__httpx: bool = Field(
         default=True, description="Enable Logfire HTTPX instrumentation"
     )
     logfire__instrument__fastapi: bool = Field(
-        default=True, description="Enable Logfire FastAPI instrumentation"
+        default=False, description="Enable Logfire FastAPI instrumentation"
+    )
+    logfire__capture_access_logs: bool = Field(
+        default=False,
+        description="Include normal access logs in Logfire",
     )
     logfire__httpx_capture_all: bool = Field(
         default=False, description="Capture all HTTPX requests (can be verbose)"
