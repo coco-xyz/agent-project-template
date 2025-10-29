@@ -233,16 +233,28 @@ docker-clean: docker-stop ## docker - Clean up Docker images and containers
 # =============================================================================
 
 .PHONY: compose-up
-compose-up: ## docker - Start full application stack with docker-compose
-	@echo "$(BLUE)Starting full application stack...$(RESET)"
+compose-up: ## docker - 使用已有镜像启动全量服务
+	@echo "$(BLUE)Starting full application stack using existing images...$(RESET)"
 	@if [ ! -f $(ENV_FILE) ]; then \
 		echo "$(RED)❌ .env file not found$(RESET)"; \
 		echo "$(YELLOW)Run 'make setup-env' to create it$(RESET)"; \
 		exit 1; \
 	fi
-	$(DOCKER_COMPOSE) up -d --build
+	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)✅ Application stack started$(RESET)"
 	@echo "$(CYAN)Use 'make compose-logs' to view logs$(RESET)"
+
+.PHONY: compose-up-app
+compose-up-app: ## docker - 使用已有镜像启动应用服务
+	@echo "$(BLUE)Starting app service stack...$(RESET)"
+	@if [ ! -f $(ENV_FILE) ]; then \
+		echo "$(RED)❌ .env file not found$(RESET)"; \
+		echo "$(YELLOW)Run 'make setup-env' to create it$(RESET)"; \
+		exit 1; \
+	fi
+	$(DOCKER_COMPOSE) -f docker-compose.app.yml up -d
+	@echo "$(GREEN)✅ App service stack started$(RESET)"
+	@echo "$(CYAN)Use 'make compose-logs-app' to view logs$(RESET)"
 
 .PHONY: compose-up-middleware
 compose-up-middleware: ## docker - Start middleware services only (postgres, redis)
@@ -262,6 +274,12 @@ compose-down: ## docker - Stop full application stack
 	$(DOCKER_COMPOSE) down
 	@echo "$(GREEN)✅ Application stack stopped$(RESET)"
 
+.PHONY: compose-down-app
+compose-down-app: ## docker - 停止应用服务
+	@echo "$(BLUE)Stopping app service stack...$(RESET)"
+	$(DOCKER_COMPOSE) -f docker-compose.app.yml down
+	@echo "$(GREEN)✅ App service stack stopped$(RESET)"
+
 .PHONY: compose-down-middleware
 compose-down-middleware: ## docker - Stop middleware services
 	@echo "$(BLUE)Stopping middleware services...$(RESET)"
@@ -270,6 +288,9 @@ compose-down-middleware: ## docker - Stop middleware services
 
 .PHONY: compose-restart
 compose-restart: compose-down compose-up ## docker - Restart full application stack
+
+.PHONY: compose-restart-app
+compose-restart-app: compose-down-app compose-up-app ## docker - 重启应用服务
 
 .PHONY: compose-restart-middleware
 compose-restart-middleware: compose-down-middleware compose-up-middleware ## docker - Restart middleware services
@@ -280,10 +301,33 @@ compose-build: ## docker - Build application image for docker-compose
 	$(DOCKER_COMPOSE) build
 	@echo "$(GREEN)✅ Application image built$(RESET)"
 
+.PHONY: compose-build-app
+compose-build-app: ## docker - 构建应用服务镜像
+	@echo "$(BLUE)Building app service image...$(RESET)"
+	$(DOCKER_COMPOSE) -f docker-compose.app.yml build
+	@echo "$(GREEN)✅ App service image built$(RESET)"
+
+.PHONY: compose-deploy
+compose-deploy: ## docker - 构建并启动全量服务
+	@echo "$(BLUE)Deploying full application stack (build + up)...$(RESET)"
+	@$(MAKE) --no-print-directory compose-build
+	@$(MAKE) --no-print-directory compose-up
+
+.PHONY: compose-deploy-app
+compose-deploy-app: ## docker - 构建并启动应用服务（最小化停机）
+	@echo "$(BLUE)Deploying app service stack (build + up)...$(RESET)"
+	@$(MAKE) --no-print-directory compose-build-app
+	@$(MAKE) --no-print-directory compose-up-app
+
 .PHONY: compose-logs
 compose-logs: ## docker - View logs from full application stack
 	@echo "$(BLUE)Viewing application stack logs...$(RESET)"
 	$(DOCKER_COMPOSE) logs -f
+
+.PHONY: compose-logs-app
+compose-logs-app: ## docker - 查看应用服务日志
+	@echo "$(BLUE)Viewing app service logs...$(RESET)"
+	$(DOCKER_COMPOSE) -f docker-compose.app.yml logs -f
 
 .PHONY: compose-logs-middleware
 compose-logs-middleware: ## docker - View logs from middleware services
@@ -296,6 +340,9 @@ compose-ps: ## docker - Show status of docker-compose services
 	@echo "$(CYAN)Full Stack:$(RESET)"
 	@$(DOCKER_COMPOSE) ps 2>/dev/null || echo "$(YELLOW)No full stack services running$(RESET)"
 	@echo ""
+	@echo "$(CYAN)App Only:$(RESET)"
+	@$(DOCKER_COMPOSE) -f docker-compose.app.yml ps 2>/dev/null || echo "$(YELLOW)No app-only services running$(RESET)"
+	@echo ""
 	@echo "$(CYAN)Middleware Only:$(RESET)"
 	@$(DOCKER_COMPOSE) -f docker-compose.middleware.yml ps 2>/dev/null || echo "$(YELLOW)No middleware services running$(RESET)"
 
@@ -303,6 +350,7 @@ compose-ps: ## docker - Show status of docker-compose services
 compose-clean: ## docker - Stop and remove all containers, networks, and volumes
 	@echo "$(BLUE)Cleaning up docker-compose resources...$(RESET)"
 	@$(DOCKER_COMPOSE) down -v --remove-orphans 2>/dev/null || true
+	@$(DOCKER_COMPOSE) -f docker-compose.app.yml down -v --remove-orphans 2>/dev/null || true
 	@$(DOCKER_COMPOSE) -f docker-compose.middleware.yml down -v --remove-orphans 2>/dev/null || true
 	@echo "$(GREEN)✅ Docker compose cleanup complete$(RESET)"
 
