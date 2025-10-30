@@ -160,9 +160,7 @@ def _create_db_session() -> Generator[Session, None, None]:
                 db_session.rollback()
             except Exception:
                 pass
-        raise DatabaseException(
-            DatabaseErrorCode.CONNECTION_FAILED, f"Unexpected database error: {str(e)}"
-        ) from e
+        raise
 
     finally:
         if db_session:
